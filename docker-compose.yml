@@ -1,0 +1,125 @@
+x-api-env: &api-env
+  env_file: .env
+  environment:
+    - POSTGRES_HOST=postgres
+    - POSTGRES_PORT=5432
+    - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-platform_user}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-sap_ai_platform}
+    - REDIS_URL=redis://redis:6379/0
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    # Local embedding model (bge-large) cache — appuser has no home dir, so
+    # point HuggingFace/sentence-transformers at writable /data (persisted
+    # via the model_cache volume so the ~1.3GB model downloads only once).
+    - HF_HOME=/data/.hf_cache
+    - SENTENCE_TRANSFORMERS_HOME=/data/.hf_cache
+
+services:
+  # ── API ───────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
+      - model_cache:/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    <<: *api-env
+    restart: unless-stopped
+    networks:
+      - platform
+
+  # ── Celery Worker ─────────────────────────────────────────────────────────
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.worker.celery_app worker --loglevel=info -Q default,discovery
+    volumes:
+      - ./backend:/app
+      - model_cache:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    <<: *api-env
+    restart: unless-stopped
+    networks:
+      - platform
+
+  # ── Celery Beat (RedBeat scheduler) ──────────────────────────────────────
+  beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.worker.celery_app beat --loglevel=info --scheduler redbeat.RedBeatScheduler
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - redis
+    <<: *api-env
+    restart: unless-stopped
+    networks:
+      - platform
+
+  # ── PostgreSQL 16 + pgvector ──────────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sap_ai_platform}
+      POSTGRES_USER: ${POSTGRES_USER:-platform_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    # Host port 5433: this machine may run its own PostgreSQL on 5432
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-platform_user} -d ${POSTGRES_DB:-sap_ai_platform}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - platform
+
+  # ── Redis 7 ──────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    volumes:
+      - redis_data:/data
+    # Host port 6380: this machine runs its own Redis on 6379
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - platform
+
+volumes:
+  postgres_data:
+  redis_data:
+  model_cache:
+
+networks:
+  platform:
+    driver: bridge
