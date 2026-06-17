@@ -5,7 +5,6 @@
 # Uses native Homebrew PostgreSQL 15 (+ pgvector) and Redis instead of the
 # docker-compose stack, then launches FastAPI (uvicorn) and, optionally, the
 # Celery worker + beat. Everything here is plain Python/CLI — no containers.
-#
 # Usage:
 #   ./run_local.sh            # infra + migrations + API (uvicorn) only
 #   ./run_local.sh --workers  # also start Celery worker + beat in the background
