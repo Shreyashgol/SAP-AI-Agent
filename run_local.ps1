@@ -25,6 +25,8 @@
     Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 #>
 
+#./run_local.sh --workers
+
 [CmdletBinding()]
 param(
   [switch]$Workers,

@@ -109,16 +109,41 @@ export CELERY_RESULT_BACKEND="redis://localhost:${REDIS_PORT}/0"
 
 # ── 5. Python env + dependencies ────────────────────────────────────────────
 echo "🐍 Activating virtual environment..."
+
 if [ ! -d ".venv" ]; then
-  echo "❌ .venv not found. Create it with: python3 -m venv .venv"
-  exit 1
+  echo "📦 Creating Python 3.13 virtual environment..."
+  /opt/homebrew/bin/python3.13 -m venv .venv
 fi
+
 source .venv/bin/activate
 
+echo "🔍 Verifying Python version..."
+PYTHON_VERSION=$(python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+
+if [ "$PYTHON_VERSION" != "3.13" ]; then
+  echo "❌ Python 3.13 required. Found Python $PYTHON_VERSION"
+  echo "Delete .venv and recreate:"
+  echo "rm -rf .venv"
+  echo "/opt/homebrew/bin/python3.13 -m venv .venv"
+  exit 1
+fi
+
+echo "✅ Using Python $(python --version)"
+
 cd backend
+
 if [ "$INSTALL_DEPS" = true ]; then
+  echo "⬆️ Upgrading pip tooling..."
+  pip install --upgrade pip setuptools wheel
+
+  echo "🔧 Ensuring pyodbc is Python 3.13 compatible..."
+
+  if grep -q "pyodbc==5.1.0" requirements.txt; then
+      sed -i '' 's/pyodbc==5.1.0/pyodbc==5.2.0/g' requirements.txt
+  fi
+
   echo "📥 Installing backend dependencies..."
-  pip install -r requirements.txt >/dev/null
+  pip install -r requirements.txt
 fi
 
 # ── 6. Database migrations ──────────────────────────────────────────────────
