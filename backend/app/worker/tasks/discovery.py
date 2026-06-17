@@ -264,6 +264,9 @@ async def _execute_discovery(
             # Open raw source-DB connection in threadpool (SchemaCrawler needs sync cursor)
             import asyncio
             raw_pw = decrypt(creds["encrypted_password"])
+            # Self-correct host for the current runtime (container vs bare metal).
+            from app.services.connections.connector import normalize_db_host
+            db_host = normalize_db_host(connection.host)
 
             def _open_conn():
                 if connection.db_type == "hana":
@@ -272,7 +275,7 @@ async def _execute_discovery(
                     except ImportError:
                         raise RuntimeError("hdbcli not installed")
                     return hdbapi.connect(
-                        address=connection.host,
+                        address=db_host,
                         port=connection.port,
                         user=creds["username"],
                         password=raw_pw,
@@ -286,7 +289,7 @@ async def _execute_discovery(
                         raise RuntimeError("pyodbc not installed")
                     from app.services.connections.connector import build_mssql_conn_str
                     conn_str = build_mssql_conn_str(
-                        host=connection.host,
+                        host=db_host,
                         port=connection.port,
                         database_name=connection.database_name,
                         username=creds["username"],

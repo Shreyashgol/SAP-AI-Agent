@@ -17,7 +17,7 @@ from app.core.encryption import decrypt, encrypt
 from app.core.exceptions import ConflictError, NotFoundError
 from app.models.connection import Connection
 from app.schemas.connection import ConnectionCreate, ConnectionTestResult
-from app.services.connections.connector import ConnectorError, get_connector
+from app.services.connections.connector import ConnectorError, get_connector, normalize_db_host
 
 
 class ConnectionService:
@@ -35,6 +35,11 @@ class ConnectionService:
         )
         if existing.scalar_one_or_none():
             raise ConflictError(f"Connection '{body.name}' already exists.")
+
+        # A loopback host can't reach a DB published on the host machine when the
+        # API runs in a container — rewrite it once so both the stored column and
+        # the credential blob (which the connector actually dials) stay in sync.
+        body.host = normalize_db_host(body.host)
 
         # Encrypt credentials — store as JSON blob, path = "local:{blob}"
         cred_blob = self._build_credential_blob(body)
@@ -108,6 +113,10 @@ class ConnectionService:
         credentials = json.loads(decrypt(blob))
         # Blobs written before is_tls was stored default to TLS on
         credentials.setdefault("is_tls", conn.is_tls)
+        # Self-correct the host for the current runtime (container vs bare metal)
+        # so blobs saved with a now-unreachable host (e.g. host.docker.internal
+        # written under Docker, then run via run_local.sh) still connect.
+        credentials["host"] = normalize_db_host(credentials.get("host", conn.host))
         return credentials
 
     async def _get(self, tenant_id: uuid.UUID, connection_id: uuid.UUID) -> Connection:

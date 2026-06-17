@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     postgres_user: str
     postgres_password: str
 
+    # When the API runs inside a container, a user-supplied DB host of
+    # "localhost"/"127.0.0.1" points at the container itself, not the host
+    # machine — connections then fail with a login timeout. We rewrite such
+    # hosts to this alias (Docker Desktop's host gateway). Set to "" to disable.
+    local_db_host_alias: str = "host.docker.internal"
+
     # ── Redis ────────────────────────────────────────────────────────────────
     redis_url: str = "redis://redis:6379/0"
     redis_session_db: int = 1

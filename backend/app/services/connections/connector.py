@@ -8,6 +8,7 @@ Database connector services for HANA (hdbcli) and MSSQL (pyodbc).
 """
 
 import asyncio
+import os
 from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager
 from typing import Any
@@ -17,11 +18,39 @@ import redis.asyncio as aioredis
 from app.core.encryption import decrypt
 from app.core.exceptions import AppError
 from app.core.logging import get_logger
+from app.core.settings import get_settings
 from app.services.connections.circuit_breaker import CircuitBreaker
 
 log = get_logger(__name__)
 
 CONNECT_TIMEOUT = 30
+
+# Hosts that resolve to the container itself rather than the host machine.
+_LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+
+def _running_in_container() -> bool:
+    return os.path.exists("/.dockerenv")
+
+
+def normalize_db_host(host: str) -> str:
+    """
+    Keep a local DB host reachable regardless of where the API runs:
+      • In a container, a loopback host (localhost/127.0.0.1) points at the
+        container itself, so rewrite it to the host gateway alias
+        (host.docker.internal).
+      • On bare metal (e.g. run_local.sh) the gateway alias does NOT resolve,
+        so rewrite it back to localhost.
+    No-op when the alias is disabled (settings.local_db_host_alias = "").
+    """
+    alias = get_settings().local_db_host_alias
+    if not alias:
+        return host
+    normalized = host.strip().lower()
+    if _running_in_container():
+        return alias if normalized in _LOOPBACK_HOSTS else host
+    # Bare metal: the container gateway alias is unreachable — fall back to loopback.
+    return "localhost" if normalized == alias.lower() else host
 
 
 def build_mssql_conn_str(

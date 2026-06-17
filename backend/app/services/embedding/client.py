@@ -20,6 +20,7 @@ dimension (1024).
 from __future__ import annotations
 
 import json
+import os
 import asyncio
 import threading
 from typing import Any, Literal
@@ -58,9 +59,15 @@ class EmbeddingClient:
                         raise RuntimeError(
                             "sentence-transformers is not installed — embeddings are unavailable"
                         ) from exc
-                    log.info("embedding.loading_model", model=_EMBEDDING_MODEL)
-                    self._model = SentenceTransformer(_EMBEDDING_MODEL)
-                    log.info("embedding.model_loaded", model=_EMBEDDING_MODEL)
+                    # Force CPU by default: Celery prefork workers fork(), and
+                    # PyTorch's Apple-Metal (MPS) backend can't reach the Metal
+                    # compiler service in a forked child ("Unable to reach
+                    # MTLCompilerService"), which crashes embedding. CPU is plenty
+                    # for this model/scale. Override with EMBEDDING_DEVICE=mps|cuda.
+                    device = os.getenv("EMBEDDING_DEVICE", "cpu")
+                    log.info("embedding.loading_model", model=_EMBEDDING_MODEL, device=device)
+                    self._model = SentenceTransformer(_EMBEDDING_MODEL, device=device)
+                    log.info("embedding.model_loaded", model=_EMBEDDING_MODEL, device=device)
         return self._model
 
     async def embed_texts(
