@@ -58,6 +58,18 @@ def deprecate_tools_for_table(table_id: str, tenant_id: str) -> dict:
     return asyncio.run(_run_deprecate_table(table_id, tenant_id))
 
 
+@celery_app.task(
+    name="tools.generate_ai_collection",
+    queue="default",
+    max_retries=2,
+    default_retry_delay=30,
+)
+def generate_ai_collection(connection_id: str, tenant_id: str) -> dict:
+    """Claude generates KPIs + tools from the connection's real crawled schema."""
+    import asyncio
+    return asyncio.run(_run_ai_collection(connection_id, tenant_id))
+
+
 # ── Async implementations ─────────────────────────────────────────────────────
 
 async def _run_generate_connection(connection_id: str, tenant_id: str) -> dict:
@@ -129,6 +141,23 @@ async def _run_apply_pack(tenant_id: str, pack_source: str) -> dict:
         except Exception as exc:
             await db.rollback()
             log.error("tools.apply_pack.error", tenant_id=tenant_id, exc=str(exc))
+            raise
+
+
+async def _run_ai_collection(connection_id: str, tenant_id: str) -> dict:
+    from app.services.semantic.ai_generator import AISchemaGenerator
+
+    tenant_uuid = uuid.UUID(tenant_id)
+    conn_uuid = uuid.UUID(connection_id)
+    async with AsyncSessionLocal() as db:
+        try:
+            generator = AISchemaGenerator(db, tenant_uuid)
+            result = await generator.generate(conn_uuid)
+            await db.commit()
+            return {"status": "completed", **result}
+        except Exception as exc:
+            await db.rollback()
+            log.error("tools.ai_collection.error", connection_id=connection_id, exc=str(exc))
             raise
 
 

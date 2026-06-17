@@ -53,6 +53,13 @@ class Settings(BaseSettings):
     anthropic_api_key: str
     anthropic_default_model: str = "claude-sonnet-4-6"
     anthropic_fast_model: str = "claude-haiku-4-5-20251001"
+    # Capable model used to generate the semantic layer (entities/KPIs/tools)
+    # from a connection's real schema during onboarding.
+    anthropic_generation_model: str = "claude-opus-4-8"
+
+    # When true, onboarding generates entities/KPIs/tools from the crawled schema
+    # via Claude (schema-grounded). When false, falls back to the static SAP B1 pack.
+    onboarding_ai_generation: bool = True
 
     # ── LangSmith ────────────────────────────────────────────────────────────
     langsmith_api_key: str = ""

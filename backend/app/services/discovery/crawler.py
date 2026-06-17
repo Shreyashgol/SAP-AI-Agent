@@ -116,7 +116,7 @@ _MSSQL_COLUMNS_SQL = text("""
               WHERE tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
                 AND tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
           )
-    WHERE c.TABLE_SCHEMA = :schema AND c.TABLE_NAME = :table
+    WHERE c.TABLE_SCHEMA = ? AND c.TABLE_NAME = ?
     ORDER BY c.ORDINAL_POSITION
 """)
 
@@ -261,7 +261,12 @@ class SchemaCrawler:
 
         def _run() -> list[tuple]:
             cursor = self.src_conn.cursor()
-            cursor.execute(str(sql), {"schema": schema, "table": table})
+            if self.db_type == "hana":
+                # hdbcli supports named (:schema/:table) params via a dict
+                cursor.execute(str(sql), {"schema": schema, "table": table})
+            else:
+                # pyodbc only supports positional '?' markers, ordered (schema, table)
+                cursor.execute(str(sql), (schema, table))
             return cursor.fetchall()
 
         rows = await asyncio.get_event_loop().run_in_executor(None, _run)

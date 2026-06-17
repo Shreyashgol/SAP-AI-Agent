@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ensureAuth } from "@/lib/api";
 import ChatPage from "@/pages/ChatPage";
 import ConnectionsPage from "@/pages/ConnectionsPage";
 import DocumentsPage from "@/pages/DocumentsPage";
@@ -35,9 +37,38 @@ function AppWithOnboarding({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** Block initial render until a token exists, so the first data queries are authenticated. */
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    ensureAuth()
+      .then(() => setReady(true))
+      .catch((e) => setError(e?.message ?? "Authentication failed"));
+  }, []);
+
+  if (error) {
+    return (
+      <div className="flex h-screen items-center justify-center text-sm text-red-600">
+        Could not sign in to the backend: {error}
+      </div>
+    );
+  }
+  if (!ready) {
+    return (
+      <div className="flex h-screen items-center justify-center text-sm text-gray-500">
+        Connecting…
+      </div>
+    );
+  }
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <AuthGate>
       <BrowserRouter>
         <Routes>
           <Route element={<AppWithOnboarding><AppShell /></AppWithOnboarding>}>
@@ -56,6 +87,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
+      </AuthGate>
     </QueryClientProvider>
   );
 }

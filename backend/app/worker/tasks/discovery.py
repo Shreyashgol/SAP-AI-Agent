@@ -69,6 +69,7 @@ def build_post_discovery_pipeline(
     """
     from celery import chain, group
 
+    from app.core.settings import get_settings
     from app.worker.tasks.embedding import embed_entities, embed_tools
     from app.worker.tasks.semantic import (
         apply_entity_pack,
@@ -77,10 +78,28 @@ def build_post_discovery_pipeline(
     )
     from app.worker.tasks.tools import (
         apply_tool_pack,
+        generate_ai_collection,
         generate_kpi_tools,
         generate_tools_for_connection,
     )
 
+    # AI-driven path: Claude builds the entire semantic layer from the REAL crawled
+    # schema. Entities come from run_ai_mapping (no pack applied → all tables are
+    # unmapped, so it maps them all); KPIs + tools come from generate_ai_collection,
+    # which validates every generated SQL against the crawled catalog. This avoids
+    # the static SAP B1 pack's assumption of columns that may not exist.
+    if get_settings().onboarding_ai_generation:
+        return chain(
+            run_ai_mapping.si(connection_id, tenant_id),
+            embed_entities.si(tenant_id),
+            generate_ai_collection.si(connection_id, tenant_id),
+            group(
+                embed_entities.si(tenant_id),
+                embed_tools.si(tenant_id),
+            ),
+        )
+
+    # Pack fallback (no LLM): deterministic SAP B1 pack + template tools.
     # Phase B — independent enrichment engines, one branch per engine
     engines = [
         # AI Metadata Engine: Claude maps tables the pack didn't cover

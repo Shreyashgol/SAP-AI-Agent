@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import axios from "axios";
+import api from "@/lib/api";
 
-const API = "/api/v1/embeddings";
+const API = "/embeddings";
 
 export interface ToolSearchResult {
   tool_id: string;
@@ -35,7 +35,7 @@ export function useSemanticToolSearch(query: string, domain?: string, enabled = 
   return useQuery({
     queryKey: ["semantic-tool-search", query, domain],
     queryFn: async () => {
-      const { data } = await axios.get<ToolSearchResult[]>(`${API}/search/tools`, {
+      const { data } = await api.get<ToolSearchResult[]>(`${API}/search/tools`, {
         params: { q: query, domain, top_k: 10 },
       });
       return data;
@@ -49,7 +49,7 @@ export function useSemanticEntitySearch(query: string, enabled = false) {
   return useQuery({
     queryKey: ["semantic-entity-search", query],
     queryFn: async () => {
-      const { data } = await axios.get<EntitySearchResult[]>(`${API}/search/entities`, {
+      const { data } = await api.get<EntitySearchResult[]>(`${API}/search/entities`, {
         params: { q: query, top_k: 10 },
       });
       return data;
@@ -63,7 +63,7 @@ export function useRankedTools(query: string, domain?: string, enabled = false) 
   return useQuery({
     queryKey: ["ranked-tools", query, domain],
     queryFn: async () => {
-      const { data } = await axios.get<RankedToolResult[]>("/api/v1/tools/rank", {
+      const { data } = await api.get<RankedToolResult[]>("/tools/rank", {
         params: { q: query, domain, top_k: 5 },
       });
       return data;
@@ -76,20 +76,20 @@ export function useRankedTools(query: string, domain?: string, enabled = false) 
 export function useTriggerEmbedTools() {
   return useMutation({
     mutationFn: (force: boolean) =>
-      axios.post(`${API}/tools`, null, { params: { force } }),
+      api.post(`${API}/tools`, null, { params: { force } }),
   });
 }
 
 export function useTriggerEmbedEntities() {
   return useMutation({
     mutationFn: (force: boolean) =>
-      axios.post(`${API}/entities`, null, { params: { force } }),
+      api.post(`${API}/entities`, null, { params: { force } }),
   });
 }
 
 export function useCustomBuildTool() {
   return useMutation({
     mutationFn: (body: { description: string; context_tables?: string[] }) =>
-      axios.post("/api/v1/tools/custom-build", body),
+      api.post("/tools/custom-build", body),
   });
 }

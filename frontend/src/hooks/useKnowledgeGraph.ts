@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
+import api from "@/lib/api";
 
-const API = "/api/v1/knowledge-graph";
+const API = "/knowledge-graph";
 
 export interface KGNode {
   id: string;
@@ -45,7 +45,7 @@ export function useKGNodes(connectionId?: string, domain?: string) {
       const params: Record<string, string> = {};
       if (connectionId) params.connection_id = connectionId;
       if (domain) params.domain = domain;
-      const { data } = await axios.get<KGNode[]>(`${API}/nodes`, { params });
+      const { data } = await api.get<KGNode[]>(`${API}/nodes`, { params });
       return data;
     },
     staleTime: 60_000,
@@ -56,7 +56,7 @@ export function useKGEdges(unconfirmedOnly = false) {
   return useQuery({
     queryKey: ["kg-edges", unconfirmedOnly],
     queryFn: async () => {
-      const { data } = await axios.get<KGEdge[]>(`${API}/edges`, {
+      const { data } = await api.get<KGEdge[]>(`${API}/edges`, {
         params: { unconfirmed_only: unconfirmedOnly },
       });
       return data;
@@ -69,7 +69,7 @@ export function useConfirmEdge(edgeId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (confirmed: boolean) =>
-      axios.patch(`${API}/edges/${edgeId}/confirm`, { confirmed }),
+      api.patch(`${API}/edges/${edgeId}/confirm`, { confirmed }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["kg-edges"] });
     },
@@ -78,7 +78,7 @@ export function useConfirmEdge(edgeId: string) {
 
 export function useTriggerKGBuild(connectionId: string) {
   return useMutation({
-    mutationFn: () => axios.post(`${API}/connections/${connectionId}/build`),
+    mutationFn: () => api.post(`${API}/connections/${connectionId}/build`),
   });
 }
 
@@ -86,7 +86,7 @@ export function useTraverse(fromEntityId: string, toEntityId: string, enabled = 
   return useQuery({
     queryKey: ["kg-traverse", fromEntityId, toEntityId],
     queryFn: async () => {
-      const { data } = await axios.get<TraversalResult>(`${API}/traverse`, {
+      const { data } = await api.get<TraversalResult>(`${API}/traverse`, {
         params: { from_entity_id: fromEntityId, to_entity_id: toEntityId },
       });
       return data;

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
+import api from "@/lib/api";
 
-const API = "/api/v1/tools";
+const API = "/tools";
 
 export interface Tool {
   id: string;
@@ -41,7 +41,8 @@ export function useTools(filters: ToolsFilter = {}) {
   return useQuery({
     queryKey: ["tools", filters],
     queryFn: async () => {
-      const { data } = await axios.get<Tool[]>(API, { params: filters });
+      // limit=200 (endpoint max) so freshly generated tools aren't hidden past the default page of 50
+      const { data } = await api.get<Tool[]>(API, { params: { limit: 200, ...filters } });
       return data;
     },
     staleTime: 60_000,
@@ -52,7 +53,7 @@ export function useTool(toolId: string) {
   return useQuery({
     queryKey: ["tool", toolId],
     queryFn: async () => {
-      const { data } = await axios.get<Tool>(`${API}/${toolId}`);
+      const { data } = await api.get<Tool>(`${API}/${toolId}`);
       return data;
     },
     enabled: !!toolId,
@@ -62,7 +63,7 @@ export function useTool(toolId: string) {
 export function useCreateTool() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: Partial<Tool>) => axios.post<Tool>(API, body),
+    mutationFn: (body: Partial<Tool>) => api.post<Tool>(API, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tools"] }),
   });
 }
@@ -70,7 +71,7 @@ export function useCreateTool() {
 export function usePatchTool(toolId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: Partial<Tool>) => axios.patch<Tool>(`${API}/${toolId}`, body),
+    mutationFn: (body: Partial<Tool>) => api.patch<Tool>(`${API}/${toolId}`, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tools"] });
       qc.invalidateQueries({ queryKey: ["tool", toolId] });
@@ -81,7 +82,7 @@ export function usePatchTool(toolId: string) {
 export function useDeleteTool(toolId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => axios.delete(`${API}/${toolId}`),
+    mutationFn: () => api.delete(`${API}/${toolId}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tools"] }),
   });
 }
@@ -89,14 +90,14 @@ export function useDeleteTool(toolId: string) {
 export function useApplyToolPack() {
   return useMutation({
     mutationFn: (packSource?: string) =>
-      axios.post(`${API}/actions/apply-pack`, null, { params: { pack_source: packSource ?? "sap_b1" } }),
+      api.post(`${API}/actions/apply-pack`, null, { params: { pack_source: packSource ?? "sap_b1" } }),
   });
 }
 
 export function useGenerateToolsForConnection() {
   return useMutation({
     mutationFn: (connectionId: string) =>
-      axios.post(`${API}/actions/generate-for-connection`, null, {
+      api.post(`${API}/actions/generate-for-connection`, null, {
         params: { connection_id: connectionId },
       }),
   });
@@ -105,7 +106,7 @@ export function useGenerateToolsForConnection() {
 export function useGenerateKPITools() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => axios.post(`${API}/actions/generate-kpi-tools`),
+    mutationFn: () => api.post(`${API}/actions/generate-kpi-tools`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tools"] }),
   });
 }
