@@ -69,72 +69,35 @@ def build_post_discovery_pipeline(
     """
     from celery import chain, group
 
-    from app.core.settings import get_settings
     from app.worker.tasks.embedding import embed_entities, embed_tools
-    from app.worker.tasks.semantic import (
-        apply_entity_pack,
-        run_ai_mapping,
-        seed_tenant_kpis,
-    )
-    from app.worker.tasks.tools import (
-        apply_tool_pack,
-        generate_ai_collection,
-        generate_kpi_tools,
-        generate_tools_for_connection,
-    )
+    from app.worker.tasks.semantic import run_ai_mapping
+    from app.worker.tasks.tools import generate_ai_collection
 
-    # AI-driven path: Claude builds the entire semantic layer from the REAL crawled
-    # schema. Entities come from run_ai_mapping (no pack applied → all tables are
-    # unmapped, so it maps them all); KPIs + tools come from generate_ai_collection,
-    # which validates every generated SQL against the crawled catalog. This avoids
-    # the static SAP B1 pack's assumption of columns that may not exist.
-    if get_settings().onboarding_ai_generation:
-        return chain(
-            run_ai_mapping.si(connection_id, tenant_id),
-            embed_entities.si(tenant_id),
-            generate_ai_collection.si(connection_id, tenant_id),
-            group(
-                embed_entities.si(tenant_id),
-                embed_tools.si(tenant_id),
-            ),
-        )
-
-    # Pack fallback (no LLM): deterministic SAP B1 pack + template tools.
-    # Phase B — independent enrichment engines, one branch per engine
-    engines = [
-        # AI Metadata Engine: Claude maps tables the pack didn't cover
+    # AI-driven onboarding is the only path. Claude builds the entire semantic
+    # layer from the REAL crawled schema: entities come from run_ai_mapping,
+    # KPIs + tools from generate_ai_collection, which validates every generated
+    # SQL against the crawled catalog. The legacy hardcoded SAP B1 tool pack has
+    # been removed — it assumed tables/columns (OPCH, OITB, …) that don't exist
+    # in every dataset and caused "Invalid object name" failures at query time.
+    pipeline = chain(
         run_ai_mapping.si(connection_id, tenant_id),
-        # KPI Engine: seed library, then one tool per KPI
-        chain(
-            seed_tenant_kpis.si(tenant_id),
-            generate_kpi_tools.si(tenant_id),
-        ),
-        # Tool Engine: static pack, then entity summary / drill-down tools
-        chain(
-            apply_tool_pack.si(tenant_id),
-            generate_tools_for_connection.si(connection_id, tenant_id),
-        ),
-    ]
-    if include_knowledge_graph:
-        from app.worker.tasks.knowledge_graph import build_full_kg
-
-        engines.append(
-            build_full_kg.si(connection_id, tenant_id, triggered_by="discovery")
-        )
-
-    return chain(
-        # Foundation: deterministic ERP-pack mapping (fast, no LLM) and an
-        # early embedding pass so chat works before enrichment finishes
-        apply_entity_pack.si(connection_id, tenant_id, db_type),
         embed_entities.si(tenant_id),
-        # Phase B — parallel workers
-        group(*engines),
-        # Phase C — final embedding pass picks up everything Phase B produced
+        generate_ai_collection.si(connection_id, tenant_id),
         group(
             embed_entities.si(tenant_id),
             embed_tools.si(tenant_id),
         ),
     )
+
+    if include_knowledge_graph:
+        from app.worker.tasks.knowledge_graph import build_full_kg
+
+        pipeline = chain(
+            pipeline,
+            build_full_kg.si(connection_id, tenant_id, triggered_by="discovery"),
+        )
+
+    return pipeline
 
 
 # ── Task base with async DB/Redis setup ───────────────────────────────────────

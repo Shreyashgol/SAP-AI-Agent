@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
-from app.models.base import TimestampMixin, UUIDMixin
+from app.models.base import VECTOR_TYPE, TimestampMixin, UUIDMixin
 
 
 class Conversation(UUIDMixin, TimestampMixin, Base):
@@ -70,3 +70,33 @@ class ConversationTurn(UUIDMixin, TimestampMixin, Base):
     execution_time_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     agents_invoked: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     error_log: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+
+class ConversationTurnEmbedding(UUIDMixin, TimestampMixin, Base):
+    """
+    Local bge-large embedding (1024 dim) of a conversation turn, enabling
+    cross-conversation semantic recall (long-term memory). One row per turn,
+    scoped to tenant + user so recall never crosses tenant/user boundaries.
+    HNSW cosine index created via migration 0005.
+    """
+
+    __tablename__ = "conversation_turn_embeddings"
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # No FK: conversation_turns has a composite PK (id, created_at) for
+    # partitioning, so a single-column FK isn't allowed. Cleanup is handled by
+    # the conversation_id CASCADE below.
+    turn_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False, unique=True
+    )
+    # The text that was embedded ("Q: ...\nA: ..."), kept for recall display.
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(VECTOR_TYPE, nullable=False)

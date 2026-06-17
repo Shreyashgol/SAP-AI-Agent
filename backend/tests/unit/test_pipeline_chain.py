@@ -2,8 +2,8 @@
 Post-discovery pipeline tests.
 
 Covers:
-  - build_post_discovery_pipeline: Foundation (pack + early embeddings) →
-    Phase B (independent engines, parallel) → Phase C (embedding join).
+  - build_post_discovery_pipeline: AI-driven onboarding chain
+    (run_ai_mapping → early embed → generate_ai_collection → embedding join).
     Knowledge graph is excluded by default (MVP) and added via flag.
   - MSSQL fingerprinting (SL-011): SAP B1 schemas on MSSQL are detected
     and mapped to the sap_b1 entity pack.
@@ -19,21 +19,21 @@ from app.services.semantic.mssql_fingerprint import fingerprint_connection
 from app.worker.tasks.discovery import build_post_discovery_pipeline
 
 
-def _branch_names(branch) -> tuple[str, ...]:
-    """Task names of a Phase B branch (a bare signature or an inner chain)."""
-    if isinstance(branch, _chain):
-        return tuple(t.task for t in branch.tasks)
-    return (branch.task,)
-
-
 def _flatten(sig) -> list:
-    out = []
-    for stage in sig.tasks:
-        if isinstance(stage, group):
-            for branch in stage.tasks:
-                out.extend(branch.tasks if isinstance(branch, _chain) else [branch])
-        else:
-            out.append(stage)
+    """Recursively collect leaf signatures from a chain/group/chord canvas."""
+    out: list = []
+    if isinstance(sig, group):
+        for branch in sig.tasks:
+            out.extend(_flatten(branch))
+    elif hasattr(sig, "body"):  # chord: header group + body callback
+        for branch in sig.tasks:
+            out.extend(_flatten(branch))
+        out.extend(_flatten(sig.body))
+    elif isinstance(sig, _chain):
+        for stage in sig.tasks:
+            out.extend(_flatten(stage))
+    else:
+        out.append(sig)
     return out
 
 
@@ -42,24 +42,18 @@ def _flatten(sig) -> list:
 @pytest.mark.unit
 def test_pipeline_phases() -> None:
     sig = build_post_discovery_pipeline("conn-1", "tenant-1", "mssql")
-    foundation, early_embed, phase_b, phase_c = sig.tasks
+    ai_mapping, early_embed, ai_collection, phase_c = sig.tasks
 
-    # Foundation: deterministic pack mapping, then an early embedding pass
-    # so chat is usable before enrichment finishes
-    assert foundation.task == "semantic.apply_pack"
-    assert foundation.args == ("conn-1", "tenant-1", "mssql")
+    # AI-driven onboarding: map entities from the REAL crawled schema, an early
+    # embedding pass so chat is usable, then generate catalog-validated KPIs +
+    # tools. No hardcoded SAP B1 pack is applied.
+    assert ai_mapping.task == "semantic.run_ai_mapping"
+    assert ai_mapping.args == ("conn-1", "tenant-1")
     assert early_embed.task == "embedding.embed_entities"
+    assert ai_collection.task == "tools.generate_ai_collection"
+    assert ai_collection.args == ("conn-1", "tenant-1")
 
-    # Phase B: independent engines in parallel; ordering only inside a branch
-    assert isinstance(phase_b, group)
-    branches = {_branch_names(b) for b in phase_b.tasks}
-    assert branches == {
-        ("semantic.run_ai_mapping",),                                  # AI Metadata
-        ("semantic.seed_kpis", "tools.generate_kpi_tools"),            # KPI Engine
-        ("tools.apply_tool_pack", "tools.generate_for_connection"),    # Tool Engine
-    }
-
-    # Phase C: final embedding join → pgvector
+    # Final embedding join → pgvector
     assert isinstance(phase_c, group)
     assert {t.task for t in phase_c.tasks} == {
         "embedding.embed_entities",
@@ -89,8 +83,7 @@ def test_pipeline_signatures_are_immutable_with_correct_args() -> None:
 
     by_name = {t.task: t for t in all_sigs}
     assert by_name["semantic.run_ai_mapping"].args == ("conn-1", "tenant-1")
-    assert by_name["semantic.seed_kpis"].args == ("tenant-1",)
-    assert by_name["tools.generate_for_connection"].args == ("conn-1", "tenant-1")
+    assert by_name["tools.generate_ai_collection"].args == ("conn-1", "tenant-1")
     assert by_name["embedding.embed_tools"].args == ("tenant-1",)
 
 

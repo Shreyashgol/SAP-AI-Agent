@@ -22,7 +22,6 @@ from app.schemas.tools import (
     ToolResponse,
 )
 from app.worker.tasks.tools import (
-    apply_tool_pack,
     generate_kpi_tools,
     generate_tools_for_connection,
 )
@@ -220,21 +219,6 @@ async def delete_tool(
 
 
 # ── Async generation actions ──────────────────────────────────────────────────
-
-@router.post(
-    "/actions/apply-pack",
-    response_model=ToolPackApplyResponse,
-    status_code=status.HTTP_202_ACCEPTED,
-    dependencies=[RequirePlatformAdmin],
-)
-async def action_apply_pack(
-    tenant: Annotated[dict, Depends(get_current_tenant)],
-    pack_source: str = "sap_b1",
-):
-    """Seed the SAP B1 tool pack for this tenant."""
-    task = apply_tool_pack.delay(tenant_id=str(tenant["id"]), pack_source=pack_source)
-    return ToolPackApplyResponse(job_id=task.id, status="queued", pack_source=pack_source)
-
 
 @router.post(
     "/actions/generate-for-connection",

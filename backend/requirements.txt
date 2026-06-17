@@ -14,7 +14,7 @@ redis[hiredis]==5.2.1
 
 # ── Task Queue ────────────────────────────────────────────────────────────────
 celery[redis]==5.5.2
-#redbeat==2.2.0
+celery-redbeat==2.2.0
 
 # ── Settings & Validation ─────────────────────────────────────────────────────
 pydantic[email]==2.9.2

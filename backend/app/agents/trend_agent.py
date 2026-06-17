@@ -79,14 +79,21 @@ class TrendAgent(BaseAgent):
                 "lineage": state.get("lineage"),
             }
 
-        # Identify period and metric columns
-        period_col = _pick_column(columns, _DATE_PATTERNS) or columns[0]
-        metric_col = _pick_column(
-            [c for c in columns if c != period_col], _METRIC_PATTERNS
-        ) or (columns[1] if len(columns) > 1 else columns[0])
+        # Identify period and metric columns. Date-like columns (Year, Month,
+        # DocDate, …) are excluded from metric candidates so a column such as
+        # "SalesMonth" is never mistaken for the metric just because it contains
+        # "sales". When both a year and a month column exist, the period label
+        # is the composite "YYYY-MM" so each month is a distinct point.
+        date_cols = [c for c in columns if _DATE_PATTERNS.search(_normalize(c))]
+        metric_candidates = [c for c in columns if c not in date_cols] or columns
+        metric_col = _pick_column(metric_candidates, _METRIC_PATTERNS) or metric_candidates[0]
+
+        year_col = _find(date_cols, r"year")
+        month_col = _find(date_cols, r"month")
+        period_col = date_cols[0] if date_cols else columns[0]
 
         # Build ordered series
-        series = _extract_series(rows, period_col, metric_col)
+        series = _extract_series(rows, period_col, metric_col, year_col, month_col)
 
         if not series:
             return {
@@ -161,21 +168,46 @@ class TrendAgent(BaseAgent):
 
 # ── Pure helpers ──────────────────────────────────────────────────────────────
 
+def _normalize(col: str) -> str:
+    """Split CamelCase/PascalCase and snake_case into space-separated words so
+    `\\bword\\b` patterns match SAP-style columns ('SalesYear' → 'sales year')."""
+    spaced = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", col)
+    return spaced.replace("_", " ").lower()
+
+
 def _pick_column(columns: list[str], pattern: re.Pattern) -> str | None:
     for col in columns:
-        # `\b` does not break on `_`, so match against an underscore-split form too
-        if pattern.search(col) or pattern.search(col.replace("_", " ")):
+        if pattern.search(_normalize(col)):
             return col
     return None
 
 
+def _find(columns: list[str], word: str) -> str | None:
+    rx = re.compile(word, re.IGNORECASE)
+    return next((c for c in columns if rx.search(_normalize(c))), None)
+
+
+def _period_label(row: dict, period_col: str, year_col: str | None, month_col: str | None) -> str:
+    """Composite 'YYYY-MM' when both year and month columns exist, else the raw period."""
+    if year_col and month_col:
+        try:
+            return f"{int(row[year_col])}-{int(row[month_col]):02d}"
+        except (TypeError, ValueError, KeyError):
+            pass
+    return str(row.get(period_col, ""))
+
+
 def _extract_series(
-    rows: list[dict], period_col: str, metric_col: str
+    rows: list[dict],
+    period_col: str,
+    metric_col: str,
+    year_col: str | None = None,
+    month_col: str | None = None,
 ) -> list[dict[str, Any]]:
     """Return [{label, value}] sorted by label (assumes ISO-sortable labels)."""
     series = []
     for row in rows:
-        label = str(row.get(period_col, ""))
+        label = _period_label(row, period_col, year_col, month_col)
         val = row.get(metric_col)
         try:
             value = float(val)  # type: ignore[arg-type]

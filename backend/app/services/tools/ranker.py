@@ -72,11 +72,15 @@ class ToolRanker:
         Retrieve top-K tool candidates via vector search then rescore with
         success-rate and feedback weights.
         """
+        # NOTE: domain is intentionally NOT passed as a retrieval filter.
+        # detected_domain comes from a fuzzy LLM classifier (e.g. "invoiced
+        # revenue" → finance even though the matching tool is tagged sales),
+        # so hard-filtering on it could zero out every candidate. Domain is
+        # applied below as a soft +W_DOMAIN scoring bonus instead.
         search = VectorSearchService(self.db, self.tenant_id)
         candidates = await search.find_tools(
             query,
             top_k=TOP_K_CANDIDATES,
-            domain=detected_domain,
         )
 
         if not candidates:

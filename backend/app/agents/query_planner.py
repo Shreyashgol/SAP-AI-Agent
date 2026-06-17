@@ -17,6 +17,7 @@ Missing required parameters get a None value — the SQL Executor will request c
 from __future__ import annotations
 
 import uuid
+from datetime import date
 from typing import Any
 
 from app.agents.base import BaseAgent
@@ -30,12 +31,18 @@ Output ONLY valid JSON — no prose, no markdown.
 
 Rules:
 - Dates must be in YYYY-MM-DD format
+- Resolve relative dates ("this year", "last quarter", "recently", "YTD") against
+  TODAY'S DATE provided below — never guess the year
 - If a value cannot be determined from the question, use null
 - Do not invent values not present in the question
 - For "top N" requests, extract the limit number; default to 10 if unspecified
 
 Output: {"param_name": value, ...}
 """
+
+# Param-name fragments that mark the start vs. end of a date range
+_DATE_FROM_HINTS = ("from", "start", "since", "begin", "after")
+_DATE_TO_HINTS = ("to", "end", "until", "thru", "through", "as_of", "asof", "before")
 
 
 class QueryPlannerAgent(BaseAgent):
@@ -47,7 +54,10 @@ class QueryPlannerAgent(BaseAgent):
         from app.services.knowledge_graph.traversal import GraphTraversal
         from app.services.embedding.vector_search import VectorSearchService
 
-        question = state["question"]
+        # Use the context-resolved question (ContextAgent rewrites follow-ups
+        # like "show the top 3 of those" into a self-contained question). The
+        # raw question alone has no business content for the ranker.
+        question = state.get("enriched_question") or state["question"]
         tenant_id = state["tenant_id"]
         domain = state.get("detected_domain")
 
@@ -60,7 +70,8 @@ class QueryPlannerAgent(BaseAgent):
                 return {
                     "candidate_tools": [],
                     "selected_tool": None,
-                    "error": "No tools found for this query. Try applying the SAP B1 tool pack.",
+                    "error": "No tool matches this question against the available data. "
+                             "The connected schema may not contain the data needed to answer it.",
                 }
 
             # Step 2 — store candidates for lineage
@@ -138,13 +149,17 @@ class QueryPlannerAgent(BaseAgent):
             f"- {p['name']} ({p['type']}, {'required' if p.get('required') else 'optional'}): {p.get('description', '')}"
             for p in schema
         )
-        user_msg = f"Question: {question}\n\nParameters to extract:\n{params_desc}"
+        today = date.today().isoformat()
+        user_msg = (
+            f"TODAY'S DATE: {today}\n\n"
+            f"Question: {question}\n\nParameters to extract:\n{params_desc}"
+        )
 
         raw = await self._call_llm(system=_PARAM_SYSTEM, user=user_msg)
         parsed = self._extract_json(raw)
         if not parsed:
             self._log.warning("query_planner.param_extraction_fail", raw=raw[:200])
-            return {}
+            parsed = {}
 
         # Type coercion
         result: dict[str, Any] = {}
@@ -164,4 +179,33 @@ class QueryPlannerAgent(BaseAgent):
                     result[name] = str(val)
             except (ValueError, TypeError):
                 result[name] = val
+
+        # Default any still-missing date-range param to an all-time window so
+        # undated questions ("compare sales by city") return data instead of
+        # bouncing to clarification. Non-date params (e.g. a "threshold") still
+        # fall through to clarification when required and unresolved.
+        _apply_date_defaults(schema, result, today)
         return result
+
+
+def _apply_date_defaults(
+    schema: list[dict], params: dict[str, Any], today: str
+) -> None:
+    """Fill missing date-range params in place: 'from' side → all-time start,
+    'to'/'as-of' side → today. Mutates `params`."""
+    for param in schema:
+        name = param["name"]
+        if params.get(name) is not None:
+            continue
+        lname = name.lower()
+        is_date = param.get("type") == "date" or any(
+            tok in lname for tok in ("date", "period", "year", "month")
+        )
+        if not is_date:
+            continue
+        if any(h in lname for h in _DATE_FROM_HINTS):
+            params[name] = "1900-01-01"
+        elif any(h in lname for h in _DATE_TO_HINTS):
+            params[name] = today
+        else:
+            params[name] = today

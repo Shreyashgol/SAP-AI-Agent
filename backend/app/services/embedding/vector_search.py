@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import uuid
 from dataclasses import dataclass
 
@@ -32,6 +33,15 @@ log = get_logger(__name__)
 
 DEFAULT_TOP_K = 10
 MIN_SIMILARITY = 0.60  # Discard candidates below this threshold
+
+# Common words ignored by the keyword fallback so they don't drown out signal.
+_STOPWORDS = {
+    "what", "which", "show", "give", "list", "tell", "many", "much", "have",
+    "does", "with", "from", "this", "that", "they", "them", "their", "your",
+    "into", "over", "about", "across", "each", "more", "most", "than", "then",
+    "issue", "issued", "year", "years", "month", "months", "date", "period",
+    "between", "during", "within", "would", "could", "should",
+}
 
 
 @dataclass
@@ -110,6 +120,12 @@ class VectorSearchService:
                 pass
 
         scored.sort(key=lambda x: x[0], reverse=True)
+
+        # Recall guard: embeddings exist but nothing cleared the threshold for
+        # this phrasing. Fall back to keyword matching rather than returning
+        # "no tool found" for an otherwise-answerable question.
+        if not scored:
+            return await self._tool_keyword_fallback(query, top_k, domain)
 
         return [
             ToolCandidate(
@@ -215,16 +231,38 @@ class VectorSearchService:
     async def _tool_keyword_fallback(
         self, query: str, top_k: int, domain: str | None
     ) -> list[ToolCandidate]:
+        # Tokenise the question and rank tools by how many significant words
+        # appear in their name/description. Matching the whole query string as
+        # one substring (the old behaviour) never matched natural-language
+        # questions, so the fallback was effectively dead.
+        tokens = [
+            t for t in re.findall(r"[a-z]{4,}", query.lower())
+            if t not in _STOPWORDS
+        ]
+        if not tokens:
+            return []
+
         q = select(Tool).where(
             Tool.tenant_id == self.tenant_id,
             Tool.status == "active",
-            Tool.name.ilike(f"%{query}%") | Tool.description.ilike(f"%{query}%"),
         )
         if domain:
             q = q.where(Tool.domain == domain)
-        q = q.limit(top_k)
         result = await self.db.execute(q)
         tools = result.scalars().all()
+
+        # Require ≥2 distinct token hits so an incidental single common word
+        # (e.g. "total") doesn't match an unrelated tool for an out-of-data
+        # question — those should still surface "no tool matches".
+        min_hits = 2 if len(tokens) >= 2 else 1
+        scored: list[tuple[int, Tool]] = []
+        for t in tools:
+            haystack = f"{t.name} {t.description or ''}".lower().replace("_", " ")
+            hits = sum(1 for tok in set(tokens) if tok in haystack)
+            if hits >= min_hits:
+                scored.append((hits, t))
+        scored.sort(key=lambda x: x[0], reverse=True)
+
         return [
             ToolCandidate(
                 tool_id=t.id,
@@ -234,7 +272,7 @@ class VectorSearchService:
                 category=t.category,
                 similarity=0.5,  # Nominal score for keyword hits
             )
-            for t in tools
+            for _, t in scored[:top_k]
         ]
 
 

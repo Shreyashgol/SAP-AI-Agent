@@ -10,6 +10,7 @@
 #   ./run_local.sh --workers  # also start Celery worker + beat in the background
 #   ./run_local.sh --no-deps  # skip pip install (faster restarts)
 #
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"

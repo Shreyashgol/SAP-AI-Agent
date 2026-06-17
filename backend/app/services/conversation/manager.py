@@ -149,8 +149,19 @@ class ConversationManager:
         await self._db.commit()
         await self._db.refresh(turn)
 
-        # Update Redis context
+        # Update Redis context (short-term, within-conversation memory)
         await self._update_context(conversation_id, question, answer_text)
+
+        # Long-term memory: embed this turn for cross-conversation recall.
+        # Non-fatal — a failure here must never break turn persistence.
+        from app.services.conversation.memory import ConversationMemoryService
+        await ConversationMemoryService(self._db, self._tenant_id).embed_turn(
+            turn_id=turn.id,
+            conversation_id=conversation_id,
+            user_id=user_id,
+            question=question,
+            answer=answer_text,
+        )
 
         _log.info("conversation.turn_saved", turn_id=str(turn.id), turn_number=turn_number)
         return turn

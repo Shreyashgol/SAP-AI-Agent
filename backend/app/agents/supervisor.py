@@ -80,6 +80,10 @@ async def _error_handler(state: AgentState) -> dict[str, Any]:
 def _route_after_context(state: AgentState) -> str:
     if state.get("error"):
         return "error_handler"
+    # Meta-questions about the conversation are answered in context_agent
+    # directly from history — skip the data pipeline.
+    if state.get("answer_text"):
+        return END
     return "intent_classifier"
 
 
@@ -154,7 +158,7 @@ def get_graph():
     graph.add_conditional_edges(
         "context_agent",
         _route_after_context,
-        {"intent_classifier": "intent_classifier", "error_handler": "error_handler"},
+        {"intent_classifier": "intent_classifier", "error_handler": "error_handler", END: END},
     )
 
     graph.add_conditional_edges(
