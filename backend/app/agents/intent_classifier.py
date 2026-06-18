@@ -99,10 +99,14 @@ class IntentClassifierAgent(BaseAgent):
         confidence = float(parsed.get("confidence", 0.5))
         confidence = max(0.0, min(1.0, confidence))
 
+        reasoning = parsed.get("reasoning")
+        reasoning = str(reasoning).strip() if reasoning else None
+
         self._log.info("intent_classifier.result",
                        intent=intent, domain=domain, confidence=confidence)
         return {
             "intent": intent,
             "detected_domain": domain,
             "confidence": confidence,
+            "reasoning": reasoning,
         }

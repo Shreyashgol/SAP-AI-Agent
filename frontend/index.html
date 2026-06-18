@@ -6,6 +6,17 @@
     <meta name="description" content="Enterprise AI Intelligence Platform — Business analytics powered by AI" />
     <title>Enterprise AI Platform</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      // Apply the saved (or system) theme before paint to avoid a flash of light.
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (t === "dark" || (!t && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+            document.documentElement.classList.add("dark");
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

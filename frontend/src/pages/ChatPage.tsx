@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Send, Plus, Trash2, MessageSquare, BarChart2,
   Table2, TrendingUp, ThumbsUp, ThumbsDown, HelpCircle,
-  LayoutDashboard,
+  LayoutDashboard, Copy, Check, RotateCcw, Sparkles, User,
 } from "lucide-react";
 import {
   useConversations,
@@ -16,10 +17,23 @@ import {
 import { useConnections } from "@/hooks/useConnections";
 import { useSubmitFeedback } from "@/hooks/useFeedback";
 import { useCreateDashboard, useDashboards } from "@/hooks/useDashboards";
+import { useTypewriter } from "@/hooks/useTypewriter";
+import { askStream, type ReasoningStep } from "@/hooks/useAskStream";
+import Markdown from "@/components/chat/Markdown";
+import LiveReasoning from "@/components/chat/LiveReasoning";
 import TrendChart from "@/components/chat/TrendChart";
 import AnomalyBadge from "@/components/chat/AnomalyBadge";
 import LineagePanel from "@/components/chat/LineagePanel";
+import ReasoningPanel from "@/components/chat/ReasoningPanel";
 import ExportButton from "@/components/chat/ExportButton";
+
+// ChatGPT-style example prompts shown on an empty conversation.
+const EXAMPLE_PROMPTS = [
+  "Total sales this quarter",
+  "Top 5 customers by revenue",
+  "Monthly revenue trend for the last 6 months",
+  "How many open sales orders are there?",
+];
 
 // ── Chart hint icon ──────────────────────────────────────────────────────────
 
@@ -27,6 +41,29 @@ function ChartIcon({ hint }: { hint: string | null }) {
   if (hint === "line" || hint === "area") return <TrendingUp className="w-4 h-4 text-blue-500" />;
   if (hint === "bar" || hint === "donut") return <BarChart2 className="w-4 h-4 text-violet-500" />;
   return <Table2 className="w-4 h-4 text-gray-400" />;
+}
+
+// ── Copy button ───────────────────────────────────────────────────────────────
+
+function CopyButton({ text }: { text: string | null | undefined }) {
+  const [copied, setCopied] = useState(false);
+  if (!text) return null;
+  return (
+    <button
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        } catch { /* clipboard unavailable */ }
+      }}
+      className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+      title="Copy answer"
+    >
+      {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+      {copied ? "Copied" : "Copy"}
+    </button>
+  );
 }
 
 // ── Clarification card ────────────────────────────────────────────────────────
@@ -161,16 +198,38 @@ function PinButton({
   );
 }
 
+// ── Assistant answer text (Markdown + streaming-style typewriter) ─────────────
+
+function AnswerText({
+  text,
+  isError,
+  animate,
+}: {
+  text: string;
+  isError: boolean;
+  animate: boolean;
+}) {
+  const shown = useTypewriter(text, animate);
+  if (isError) {
+    return <p className="text-sm leading-relaxed text-red-600 dark:text-red-400">{text}</p>;
+  }
+  return <Markdown>{shown || "​"}</Markdown>;
+}
+
 // ── Answer card ───────────────────────────────────────────────────────────────
 
 function AnswerCard({
   turn,
   conversationId,
+  animate,
   onFollowUp,
+  onRegenerate,
 }: {
   turn: ConversationTurn | AskResponse;
   conversationId: string;
+  animate: boolean;
   onFollowUp: (q: string) => void;
+  onRegenerate: () => void;
 }) {
   const [showSQL, setShowSQL] = useState(false);
 
@@ -186,6 +245,8 @@ function AnswerCard({
 
   const turnId = "id" in turn ? turn.id : ("turn_id" in turn ? turn.turn_id : "");
   const lineage = turn.lineage as Record<string, unknown> | null;
+  const answerText =
+    turn.answer_text || (isError ? (turn as AskResponse).error_message : "No answer available.") || "";
 
   // Build anomaly index for row highlights
   const anomalyIndex = new Set<number>(
@@ -200,17 +261,15 @@ function AnswerCard({
   if (isClarification) {
     return (
       <div className="space-y-2">
-        <p className="text-sm text-gray-600">{turn.answer_text}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-300">{turn.answer_text}</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      {/* Answer text */}
-      <p className={`text-sm leading-relaxed ${isError ? "text-red-600" : "text-gray-800"}`}>
-        {turn.answer_text || (isError ? (turn as AskResponse).error_message : "No answer available.")}
-      </p>
+      {/* Answer text — Markdown, with streaming-style reveal on fresh answers */}
+      <AnswerText text={answerText} isError={isError} animate={animate} />
 
       {/* Trend chart — shown instead of table for Trend intent */}
       {trendData && (
@@ -222,26 +281,26 @@ function AnswerCard({
 
       {/* Data table — shown for non-trend answers */}
       {!trendData && rows && rows.length > 0 && columns && columns.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
+        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
           <table className="min-w-full text-xs">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
                 {columns.map((col) => (
-                  <th key={col} className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">
+                  <th key={col} className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">
                     {col}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {rows.slice(0, 10).map((row, i) => (
-                <tr key={i} className={`hover:bg-gray-50 ${anomalyIndex.has(i) ? "bg-red-50" : ""}`}>
+                <tr key={i} className={`hover:bg-gray-50 dark:hover:bg-gray-800/60 ${anomalyIndex.has(i) ? "bg-red-50 dark:bg-red-950/40" : ""}`}>
                   {columns.map((col) => {
                     const cellAnomaly = (anomalies ?? []).find(
                       (a) => a.column === col && Object.entries(a.row).every(([k, v]) => row[k] === v)
                     );
                     return (
-                      <td key={col} className="px-3 py-2 text-gray-700 whitespace-nowrap">
+                      <td key={col} className="px-3 py-2 text-gray-700 dark:text-gray-300 whitespace-nowrap">
                         <span className="mr-1">{String(row[col] ?? "")}</span>
                         {cellAnomaly && (
                           <AnomalyBadge
@@ -260,7 +319,7 @@ function AnswerCard({
             </tbody>
           </table>
           {rows.length > 10 && (
-            <p className="px-3 py-2 text-xs text-gray-400 bg-gray-50 border-t">
+            <p className="px-3 py-2 text-xs text-gray-400 bg-gray-50 dark:bg-gray-800 border-t dark:border-gray-700">
               Showing 10 of {rows.length} rows
             </p>
           )}
@@ -284,13 +343,20 @@ function AnswerCard({
         </div>
       )}
 
+      {/* Reasoning panel — how the agent reached the answer */}
+      <ReasoningPanel
+        lineage={lineage}
+        intent={turn.intent}
+        confidence={turn.confidence_score}
+      />
+
       {/* Lineage panel */}
       {lineage && Object.keys(lineage).length > 0 && (
         <LineagePanel lineage={lineage as Parameters<typeof LineagePanel>[0]["lineage"]} />
       )}
 
       {/* Meta row + actions */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
         <div className="flex items-center gap-4 text-xs text-gray-400">
           <span className="flex items-center gap-1">
             <ChartIcon hint={turn.chart_hint} />
@@ -305,6 +371,15 @@ function AnswerCard({
           )}
         </div>
         <div className="flex items-center gap-3">
+          <CopyButton text={answerText} />
+          <button
+            onClick={onRegenerate}
+            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+            title="Regenerate answer"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            Regenerate
+          </button>
           {turnId && rows && rows.length > 0 && (
             <ExportButton conversationId={conversationId} turnId={turnId} />
           )}
@@ -326,7 +401,7 @@ function AnswerCard({
             <button
               key={i}
               onClick={() => onFollowUp(q)}
-              className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-100 hover:bg-blue-100 hover:border-blue-300 transition-colors text-left"
+              className="px-2 py-1 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs rounded-full border border-blue-100 dark:border-blue-900 hover:bg-blue-100 dark:hover:bg-blue-900/50 hover:border-blue-300 transition-colors text-left"
             >
               {q}
             </button>
@@ -337,41 +412,97 @@ function AnswerCard({
   );
 }
 
-// ── Message bubble ────────────────────────────────────────────────────────────
+// ── Avatar ────────────────────────────────────────────────────────────────────
 
-function MessageBubble({
+function Avatar({ role }: { role: "user" | "assistant" }) {
+  if (role === "user") {
+    return (
+      <div className="w-8 h-8 shrink-0 rounded-full bg-gray-200 flex items-center justify-center text-gray-600">
+        <User className="w-4 h-4" />
+      </div>
+    );
+  }
+  return (
+    <div className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-white shadow-sm">
+      <Sparkles className="w-4 h-4" />
+    </div>
+  );
+}
+
+// ── Chat message row (full-width, ChatGPT-style) ──────────────────────────────
+
+function MessageRow({
   turn,
   conversationId,
+  animate,
   onClarify,
   onFollowUp,
+  onRegenerate,
 }: {
   turn: ConversationTurn;
   conversationId: string;
+  animate: boolean;
   onClarify: (q: string) => void;
   onFollowUp: (q: string) => void;
+  onRegenerate: (q: string) => void;
 }) {
   const isClarification =
     (turn.answer_data as Record<string, unknown> | null)?.type === "clarification";
 
   return (
-    <div className="space-y-2">
-      <div className="flex justify-end">
-        <div className="max-w-xl bg-blue-600 text-white text-sm px-4 py-2.5 rounded-2xl rounded-tr-sm">
-          {turn.question}
+    <div>
+      {/* User message row */}
+      <div className="w-full">
+        <div className="mx-auto max-w-3xl px-4 py-5 flex gap-4">
+          <Avatar role="user" />
+          <div className="min-w-0 flex-1 pt-1">
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-0.5">You</p>
+            <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{turn.question}</p>
+          </div>
         </div>
       </div>
-      <div className="flex justify-start">
-        <div className="max-w-2xl w-full bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
-          {isClarification ? (
-            <ClarificationCard
-              question={turn.answer_text ?? "Could you provide more details?"}
-              onAnswer={onClarify}
-            />
-          ) : (
-            <AnswerCard turn={turn} conversationId={conversationId} onFollowUp={onFollowUp} />
-          )}
+
+      {/* Assistant message row */}
+      <div className="w-full bg-gray-50/70 dark:bg-gray-800/40">
+        <div className="mx-auto max-w-3xl px-4 py-5 flex gap-4">
+          <Avatar role="assistant" />
+          <div className="min-w-0 flex-1 pt-1">
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">SAP B1 Assistant</p>
+            {isClarification ? (
+              <ClarificationCard
+                question={turn.answer_text ?? "Could you provide more details?"}
+                onAnswer={onClarify}
+              />
+            ) : (
+              <AnswerCard
+                turn={turn}
+                conversationId={conversationId}
+                animate={animate}
+                onFollowUp={onFollowUp}
+                onRegenerate={() => onRegenerate(turn.question)}
+              />
+            )}
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Example prompt cards ──────────────────────────────────────────────────────
+
+function ExamplePrompts({ onPick }: { onPick: (q: string) => void }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-2xl">
+      {EXAMPLE_PROMPTS.map((p) => (
+        <button
+          key={p}
+          onClick={() => onPick(p)}
+          className="text-left border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/50 dark:hover:bg-gray-800 transition-colors"
+        >
+          {p}
+        </button>
+      ))}
     </div>
   );
 }
@@ -390,7 +521,7 @@ function ConnectionSelector({
     <select
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value || null)}
-      className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700"
+      className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
     >
       <option value="">No connection</option>
       {(connections ?? []).map((c) => (
@@ -408,8 +539,14 @@ export default function ChatPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [connectionId, setConnectionId] = useState<string | null>(null);
+  const [animateTurnId, setAnimateTurnId] = useState<string | null>(null);
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [pendingQuestion, setPendingQuestion] = useState("");
+  const [liveSteps, setLiveSteps] = useState<ReasoningStep[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  const qc = useQueryClient();
   const { data: conversations } = useConversations();
   const { data: turns } = useConversationTurns(activeId);
   const createConv = useCreateConversation();
@@ -418,7 +555,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [turns, ask.data]);
+  }, [turns, busy, liveSteps]);
 
   async function handleNewConversation() {
     const conv = await createConv.mutateAsync({ connection_id: connectionId ?? undefined });
@@ -427,10 +564,57 @@ export default function ChatPage() {
 
   async function handleSend(question?: string) {
     const q = (question ?? input).trim();
-    if (!q || !activeId || ask.isPending) return;
+    if (!q || !activeId || busy) return;
     if (!question) setInput("");
-    await ask.mutateAsync({ question: q });
+
+    setBusy(true);
+    setPendingQuestion(q);
+    setLiveSteps([]);
+    try {
+      // Stream the agent's reasoning live, then refetch so the saved turn renders.
+      await askStream(activeId, q, connectionId, {
+        onStep: (s) => setLiveSteps((prev) => [...prev, s]),
+        onFinal: (data) => {
+          if (data?.turn_id) setAnimateTurnId(data.turn_id);
+        },
+      });
+      qc.invalidateQueries({ queryKey: ["conversations", activeId, "turns"] });
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+    } catch {
+      // Streaming unavailable — fall back to the non-streaming mutation.
+      try {
+        const res = await ask.mutateAsync({ question: q });
+        if (res?.turn_id) setAnimateTurnId(res.turn_id);
+      } catch {
+        /* surfaced as an error turn on refetch */
+      }
+    } finally {
+      setBusy(false);
+      setPendingQuestion("");
+      setLiveSteps([]);
+    }
   }
+
+  // Pick an example prompt: create a conversation first if none is active, then
+  // send (the effect below fires once the new conversation id exists).
+  async function sendPrompt(q: string) {
+    if (activeId) {
+      handleSend(q);
+      return;
+    }
+    const conv = await createConv.mutateAsync({ connection_id: connectionId ?? undefined });
+    setActiveId(conv.id);
+    setPendingPrompt(q);
+  }
+
+  useEffect(() => {
+    if (pendingPrompt && activeId && !busy) {
+      const q = pendingPrompt;
+      setPendingPrompt(null);
+      handleSend(q);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingPrompt, activeId]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -439,11 +623,13 @@ export default function ChatPage() {
     }
   }
 
+  const hasTurns = (turns ?? []).length > 0;
+
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-gray-200 bg-gray-50 flex flex-col">
-        <div className="p-3 border-b border-gray-200 space-y-2">
+      <aside className="w-64 border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex flex-col">
+        <div className="p-3 border-b border-gray-200 dark:border-gray-800 space-y-2">
           <ConnectionSelector value={connectionId} onChange={setConnectionId} />
           <button
             onClick={handleNewConversation}
@@ -460,8 +646,8 @@ export default function ChatPage() {
               key={conv.id}
               className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm ${
                 activeId === conv.id
-                  ? "bg-blue-100 text-blue-700"
-                  : "text-gray-700 hover:bg-gray-100"
+                  ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
               }`}
               onClick={() => setActiveId(conv.id)}
             >
@@ -480,7 +666,7 @@ export default function ChatPage() {
             </div>
           ))}
           {!conversations?.length && (
-            <p className="text-xs text-gray-400 px-3 py-4 text-center">
+            <p className="text-xs text-gray-400 dark:text-gray-500 px-3 py-4 text-center">
               No conversations yet.
             </p>
           )}
@@ -488,77 +674,142 @@ export default function ChatPage() {
       </aside>
 
       {/* Chat area */}
-      <div className="flex-1 flex flex-col">
-        {activeId ? (
+      <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
+        {activeId && hasTurns ? (
           <>
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto">
               {(turns ?? []).map((turn) => (
-                <MessageBubble
+                <MessageRow
                   key={turn.id}
                   turn={turn}
                   conversationId={activeId}
+                  animate={turn.id === animateTurnId}
                   onClarify={(answer) => handleSend(answer)}
                   onFollowUp={(q) => handleSend(q)}
+                  onRegenerate={(q) => handleSend(q)}
                 />
               ))}
 
-              {/* Optimistic pending state */}
-              {ask.isPending && (
-                <div className="space-y-2">
-                  <div className="flex justify-end">
-                    <div className="max-w-xl bg-blue-600 text-white text-sm px-4 py-2.5 rounded-2xl rounded-tr-sm opacity-70">
-                      {input || "…"}
+              {/* Pending state — live reasoning as the agent thinks */}
+              {busy && (
+                <>
+                  <div className="w-full">
+                    <div className="mx-auto max-w-3xl px-4 py-5 flex gap-4">
+                      <Avatar role="user" />
+                      <div className="min-w-0 flex-1 pt-1">
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-0.5">You</p>
+                        <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                          {pendingQuestion || "…"}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex justify-start">
-                    <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
-                      <span className="text-gray-400 text-sm animate-pulse">Thinking…</span>
+                  <div className="w-full bg-gray-50/70 dark:bg-gray-800/40">
+                    <div className="mx-auto max-w-3xl px-4 py-5 flex gap-4">
+                      <Avatar role="assistant" />
+                      <div className="min-w-0 flex-1 pt-1">
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">SAP B1 Assistant</p>
+                        <LiveReasoning steps={liveSteps} />
+                      </div>
                     </div>
                   </div>
-                </div>
+                </>
               )}
 
               <div ref={bottomRef} />
             </div>
 
-            {/* Input bar */}
-            <div className="border-t border-gray-200 bg-white p-4">
-              <div className="flex items-end gap-3 max-w-4xl mx-auto">
-                <textarea
-                  rows={2}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask a business question… (Enter to send, Shift+Enter for new line)"
-                  className="flex-1 resize-none border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  disabled={ask.isPending}
-                />
-                <button
-                  onClick={() => handleSend()}
-                  disabled={!input.trim() || ask.isPending}
-                  className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
+            <Composer
+              input={input}
+              setInput={setInput}
+              onSend={() => handleSend()}
+              onKeyDown={handleKeyDown}
+              disabled={busy}
+            />
+          </>
+        ) : activeId ? (
+          // Active but empty conversation — greeting + example prompts + composer
+          <>
+            <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center text-center p-8 gap-6">
+              <Avatar role="assistant" />
+              <div>
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">How can I help with your SAP B1 data?</h2>
+                <p className="text-gray-400 dark:text-gray-500 mt-1 text-sm">Ask a question, or pick an example to start.</p>
               </div>
+              <ExamplePrompts onPick={sendPrompt} />
             </div>
+            <Composer
+              input={input}
+              setInput={setInput}
+              onSend={() => handleSend()}
+              onKeyDown={handleKeyDown}
+              disabled={busy}
+            />
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-            <MessageSquare className="w-16 h-16 text-gray-200 mb-4" />
-            <h2 className="text-xl font-semibold text-gray-700">Ask your SAP data anything</h2>
-            <p className="text-gray-400 mt-2 max-w-sm">
-              Select a connection, then start a conversation to ask about your finances,
-              sales, purchasing, inventory, or operations.
-            </p>
+          // No conversation selected
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 gap-6">
+            <Avatar role="assistant" />
+            <div>
+              <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-100">Ask your SAP data anything</h2>
+              <p className="text-gray-400 dark:text-gray-500 mt-2 max-w-sm text-sm">
+                Select a connection, then start a conversation to ask about your finances,
+                sales, purchasing, inventory, or operations.
+              </p>
+            </div>
+            <ExamplePrompts onPick={sendPrompt} />
             <button
               onClick={handleNewConversation}
-              className="mt-6 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm font-medium"
+              className="px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm font-medium"
             >
               Start conversation
             </button>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ── Composer (sticky bottom input) ────────────────────────────────────────────
+
+function Composer({
+  input,
+  setInput,
+  onSend,
+  onKeyDown,
+  disabled,
+}: {
+  input: string;
+  setInput: (v: string) => void;
+  onSend: () => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3">
+      <div className="max-w-3xl mx-auto">
+        <div className="flex items-end gap-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-3xl px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
+          <textarea
+            rows={1}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder="Message the SAP B1 Assistant…"
+            className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none max-h-40"
+            disabled={disabled}
+          />
+          <button
+            onClick={onSend}
+            disabled={!input.trim() || disabled}
+            className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+          >
+            <Send className="w-4 h-4" />
+          </button>
+        </div>
+        <p className="text-center text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">
+          Enter to send · Shift+Enter for a new line
+        </p>
       </div>
     </div>
   );

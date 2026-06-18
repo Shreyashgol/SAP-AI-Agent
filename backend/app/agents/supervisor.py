@@ -14,6 +14,7 @@ Graph topology (Sprint 9):
                 ├─[Hybrid]─────────> query_planner ─> sql_executor ─> response_formatter
                 │                         └─> hybrid_agent ─> END
                 └─[other]──────────> query_planner
+                                        ├─[no tool]─────> text_to_sql ─> sql_executor
                                         └─> sql_executor
                                               ├─[clarification]─> clarification_agent ─> END
                                               ├─[error]─────────> error_handler ─> END
@@ -42,12 +43,14 @@ from app.agents.rca_agent import RCAAgent
 from app.agents.trend_agent import TrendAgent
 from app.agents.hybrid_agent import HybridAgent
 from app.agents.web_search import WebSearchAgent
+from app.agents.text_to_sql import TextToSQLAgent
 
 # ── Agent singletons ─────────────────────────────────────────────────────────
 
 _context_agent = ContextAgent()
 _intent_classifier = IntentClassifierAgent()
 _query_planner = QueryPlannerAgent()
+_text_to_sql = TextToSQLAgent()
 _sql_executor = SQLExecutorAgent()
 _response_formatter = ResponseFormatterAgent()
 _clarification_agent = ClarificationAgent()
@@ -103,8 +106,20 @@ def _route_after_planner(state: AgentState) -> str:
     if state.get("error"):
         return "error_handler"
     if not state.get("selected_tool"):
+        # No curated tool matched — fall back to the text-to-SQL agent, which
+        # generates a SELECT from the crawled schema catalog.
+        if state.get("use_text_to_sql"):
+            return "text_to_sql"
         return "error_handler"
     return "sql_executor"
+
+
+def _route_after_text_to_sql(state: AgentState) -> str:
+    if state.get("error"):
+        return "error_handler"
+    if state.get("selected_tool"):
+        return "sql_executor"
+    return "error_handler"
 
 
 def _route_after_executor(state: AgentState) -> str:
@@ -141,6 +156,7 @@ def get_graph():
     graph.add_node("context_agent", _context_agent)
     graph.add_node("intent_classifier", _intent_classifier)
     graph.add_node("query_planner", _query_planner)
+    graph.add_node("text_to_sql", _text_to_sql)
     graph.add_node("sql_executor", _sql_executor)
     graph.add_node("response_formatter", _response_formatter)
     graph.add_node("clarification_agent", _clarification_agent)
@@ -175,6 +191,16 @@ def get_graph():
     graph.add_conditional_edges(
         "query_planner",
         _route_after_planner,
+        {
+            "sql_executor": "sql_executor",
+            "text_to_sql": "text_to_sql",
+            "error_handler": "error_handler",
+        },
+    )
+
+    graph.add_conditional_edges(
+        "text_to_sql",
+        _route_after_text_to_sql,
         {"sql_executor": "sql_executor", "error_handler": "error_handler"},
     )
 

@@ -41,10 +41,12 @@ class AgentState(MessagesState):
     detected_domain: str | None            # finance | sales | ...
     enriched_question: str | None          # context-resolved question (Sprint 7)
     confidence: float | None               # 0–1 classification confidence
+    reasoning: str | None                  # intent classifier's one-line rationale
 
     # ── Query planning (AG-004) ──────────────────────────────────────────────
     candidate_tools: list[dict[str, Any]]  # [{tool_id, name, score, params}]
     selected_tool: dict[str, Any] | None   # resolved tool with bound params
+    use_text_to_sql: bool                  # no tool matched → fall back to text-to-SQL
     resolved_params: dict[str, Any]        # :param_name → value map
     join_path: str | None                  # SQL JOIN chain from KG traversal
     entity_ids: list[uuid.UUID]            # resolved entity IDs for the query

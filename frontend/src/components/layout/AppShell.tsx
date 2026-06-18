@@ -11,6 +11,7 @@ import {
   Network,
   Wrench,
 } from "lucide-react";
+import ThemeToggle from "./ThemeToggle";
 
 const navItems = [
   { to: "/", icon: MessageSquare, label: "Chat" },
@@ -27,15 +28,15 @@ const navItems = [
 
 export default function AppShell() {
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       {/* Sidebar */}
-      <aside className="w-16 lg:w-56 bg-white border-r border-gray-200 flex flex-col shrink-0">
+      <aside className="w-16 lg:w-56 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col shrink-0">
         {/* Logo */}
-        <div className="h-14 flex items-center px-4 border-b border-gray-200">
-          <span className="hidden lg:block font-bold text-brand-700 text-sm truncate">
+        <div className="h-14 flex items-center px-4 border-b border-gray-200 dark:border-gray-800">
+          <span className="hidden lg:block font-bold text-brand-700 dark:text-brand-300 text-sm truncate">
             AI Platform
           </span>
-          <span className="lg:hidden text-brand-700 font-bold text-lg">A</span>
+          <span className="lg:hidden text-brand-700 dark:text-brand-300 font-bold text-lg">A</span>
         </div>
 
         {/* Nav */}
@@ -48,8 +49,8 @@ export default function AppShell() {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-2 py-2 rounded-lg text-sm font-medium transition-colors ${
                   isActive
-                    ? "bg-brand-50 text-brand-700"
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    ? "bg-brand-50 dark:bg-brand-900/40 text-brand-700 dark:text-brand-200"
+                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
                 }`
               }
             >
@@ -59,10 +60,14 @@ export default function AppShell() {
           ))}
         </nav>
 
+        {/* Theme toggle */}
+        <div className="p-2 border-t border-gray-200 dark:border-gray-800">
+          <ThemeToggle />
+        </div>
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
         <Outlet />
       </main>
     </div>

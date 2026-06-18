@@ -29,7 +29,7 @@ const TENANT_KEY = "tenant_id";
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
-function getTenant(): string {
+export function getTenant(): string {
   return localStorage.getItem(TENANT_KEY) ?? TENANT_ID;
 }
 function setAuth(token: string, tenant: string) {

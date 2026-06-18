@@ -26,10 +26,26 @@ from app.agents.base import BaseAgent
 from app.agents.state import AgentState
 
 _NARRATIVE_SYSTEM = """\
-You are an enterprise analytics assistant. Given a SQL query result and business question,
-write a clear, concise answer in 2-4 sentences. Use specific numbers from the data.
-Do not mention SQL, tables, or technical details. Write for a business executive.
-If the result is empty, say so clearly and suggest why the data might be absent.
+You are an enterprise analytics assistant answering a business question from a SQL
+result. Write the answer in Markdown with this structure:
+
+1. A direct one- to two-sentence answer stating the headline figure(s), using the
+   actual numbers and units from the data.
+2. A "**Key insights**" section with 2–4 short bullet points highlighting what
+   matters: the largest/smallest values, notable gaps or concentrations,
+   comparisons between rows, trends, or anything surprising. Every bullet must
+   cite specific numbers from the data.
+3. (Optional) one short closing sentence of business interpretation or a caveat
+   (e.g. the data only covers part of a period).
+
+Rules:
+- Use ONLY numbers present in the result — never invent, round away meaning, or
+  extrapolate. Add currency/percent signs where the data implies them.
+- Do NOT mention SQL, tables, columns, or other technical details.
+- Be concise and direct — no preamble like "Based on the data". Write for a busy
+  executive.
+- If the result is empty, say so plainly and suggest a likely reason (no
+  transactions in range, filters too narrow); omit the insights section.
 """
 
 _FOLLOWUP_SYSTEM = """\
@@ -91,8 +107,27 @@ class ResponseFormatterAgent(BaseAgent):
         # ── 5. Follow-up questions ────────────────────────────────────────────
         follow_ups = await self._generate_follow_ups(question)
 
-        # ── 5. Lineage ────────────────────────────────────────────────────────
+        # ── 5. Lineage + reasoning trace ──────────────────────────────────────
+        existing_lineage = state.get("lineage") or {}
+        domain = state.get("detected_domain")
+        is_text_to_sql = (
+            bool(existing_lineage.get("text_to_sql"))
+            or tool.get("name") == "ad_hoc_text_to_sql"
+        )
+
+        reasoning_steps = _build_reasoning(
+            intent=intent,
+            domain=domain,
+            intent_reasoning=state.get("reasoning"),
+            is_text_to_sql=is_text_to_sql,
+            tool_name=tool.get("name"),
+            tables_used=existing_lineage.get("tables_used"),
+            row_count=row_count,
+            execution_ms=state.get("execution_time_ms"),
+        )
+
         lineage = {
+            **existing_lineage,
             "tool_id": tool.get("tool_id"),
             "tool_name": tool.get("name"),
             "sql": state.get("sql_query"),
@@ -102,6 +137,9 @@ class ResponseFormatterAgent(BaseAgent):
             "entity_ids": [str(e) for e in (state.get("entity_ids") or [])],
             "execution_time_ms": state.get("execution_time_ms"),
             "turn_id": str(state.get("turn_id", "")),
+            "intent": intent,
+            "intent_reasoning": state.get("reasoning"),
+            "reasoning": reasoning_steps,
         }
 
         # ── 6. Confidence score ───────────────────────────────────────────────
@@ -191,6 +229,47 @@ class ResponseFormatterAgent(BaseAgent):
 
 
 # ── Pure helpers ──────────────────────────────────────────────────────────────
+
+def _build_reasoning(
+    *,
+    intent: str,
+    domain: str | None,
+    intent_reasoning: str | None,
+    is_text_to_sql: bool,
+    tool_name: str | None,
+    tables_used: list[str] | None,
+    row_count: int,
+    execution_ms: int | None,
+) -> list[str]:
+    """Human-readable trace of how the answer was produced, for the UI's
+    reasoning panel. Each entry is one short step."""
+    steps: list[str] = []
+
+    line = f"Interpreted your question as a **{intent}** request"
+    if domain:
+        line += f" in the **{domain}** domain"
+    steps.append(line + ".")
+
+    if intent_reasoning:
+        steps.append(intent_reasoning)
+
+    if is_text_to_sql:
+        steps.append(
+            "No pre-built tool matched, so I generated a SQL query directly from "
+            "your connected schema."
+        )
+    elif tool_name:
+        steps.append(f"Selected the **{tool_name}** analysis to answer it.")
+
+    if tables_used:
+        steps.append(f"Queried: {', '.join(tables_used)}.")
+
+    ret = f"Returned {row_count} row(s)"
+    if execution_ms is not None:
+        ret += f" in {execution_ms} ms"
+    steps.append(ret + ".")
+    return steps
+
 
 def _choose_chart(intent: str, rows: list[dict], columns: list[str]) -> str:
     """Heuristic chart hint from intent + result shape."""

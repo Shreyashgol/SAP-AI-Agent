@@ -67,11 +67,17 @@ class QueryPlannerAgent(BaseAgent):
             ranked = await ranker.rank(question, detected_domain=domain, top_k=5)
 
             if not ranked:
+                # No curated tool matches. Rather than giving up, fall back to the
+                # text-to-SQL agent, which generates a SELECT directly from the
+                # crawled schema catalog (validated against it). The supervisor
+                # routes a tool-less planner result with this flag to text_to_sql.
+                self._log.info(
+                    "query_planner.no_tool_fallback_text_to_sql", question=question[:80]
+                )
                 return {
                     "candidate_tools": [],
                     "selected_tool": None,
-                    "error": "No tool matches this question against the available data. "
-                             "The connected schema may not contain the data needed to answer it.",
+                    "use_text_to_sql": True,
                 }
 
             # Step 2 — store candidates for lineage
