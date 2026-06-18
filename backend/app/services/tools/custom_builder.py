@@ -184,7 +184,7 @@ class CustomToolBuilder:
             system=_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_message}],
         )
-        return response.content[0].text
+        return "".join(block.text for block in response.content if block.type == "text")
 
 
 # ── Validation helpers ────────────────────────────────────────────────────────

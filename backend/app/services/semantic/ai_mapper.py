@@ -194,7 +194,7 @@ class AIEntityMapper:
                 system=_SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": user_message}],
             )
-            raw = message.content[0].text.strip()
+            raw = "".join(block.text for block in message.content if block.type == "text").strip()
             # Strip markdown code fence if present
             if raw.startswith("```"):
                 raw = raw.split("```")[1]

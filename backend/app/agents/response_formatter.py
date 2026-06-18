@@ -70,7 +70,7 @@ class ResponseFormatterAgent(BaseAgent):
         truncated: bool = result.get("truncated", False)
 
         question = state["question"]
-        intent = state.get("intent", "Aggregation")
+        intent = state.get("intent") or "Aggregation"
         tool = state.get("selected_tool") or {}
 
         # ── 1. Determine chart hint ──────────────────────────────────────────

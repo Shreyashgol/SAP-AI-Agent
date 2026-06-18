@@ -46,7 +46,7 @@ class BaseAgent:
             "agent.start",
             agent=self.name,
             turn_id=str(state.get("turn_id", "")),
-            question=str(state.get("question", ""))[:80],
+            question=state.get("question", "")[:80],
         )
         try:
             updates = await self._run(state)
@@ -86,7 +86,7 @@ class BaseAgent:
                     system=system,
                     messages=[{"role": "user", "content": user}],
                 )
-                return response.content[0].text
+                return "".join(block.text for block in response.content if block.type == "text")
             except anthropic.APIStatusError as exc:
                 status = exc.status_code
                 retryable = status == 429 or status >= 500

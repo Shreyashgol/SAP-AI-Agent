@@ -14,7 +14,7 @@ blocking the conversation.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from app.agents.base import BaseAgent
 from app.agents.state import AgentState
@@ -92,8 +92,8 @@ class WebSearchAgent(BaseAgent):
             model=self._default_model,
             max_tokens=2048,
             system=_WEB_SYSTEM,
-            messages=messages,
-            tools=tools,
+            messages=cast(Any, messages),
+            tools=cast(Any, tools),
         )
 
         # The server-side tool loop may pause; re-send to let it resume
@@ -108,8 +108,8 @@ class WebSearchAgent(BaseAgent):
                 model=self._default_model,
                 max_tokens=2048,
                 system=_WEB_SYSTEM,
-                messages=messages,
-                tools=tools,
+                messages=cast(Any, messages),
+                tools=cast(Any, tools),
             )
 
         text_parts: list[str] = []

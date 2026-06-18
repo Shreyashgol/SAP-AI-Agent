@@ -377,17 +377,16 @@ class ContextAgent(BaseAgent):
         from app.db.session import AsyncSessionLocal
         from app.models.tool import Tool
 
-        rows: list = []
+        rows: list[Any] = []
         try:
             async with AsyncSessionLocal() as db:
-                rows = (
-                    await db.execute(
-                        select(Tool.name, Tool.description, Tool.domain)
-                        .where(Tool.tenant_id == tenant_id, Tool.status == "active")
-                        .order_by(Tool.domain)
-                        .limit(40)
-                    )
-                ).all()
+                result = await db.execute(
+                    select(Tool.name, Tool.description, Tool.domain)
+                    .where(Tool.tenant_id == tenant_id, Tool.status == "active")
+                    .order_by(Tool.domain)
+                    .limit(40)
+                )
+                rows = list(result.all())
         except Exception as exc:
             self._log.warning("context_agent.grounding_fail", exc=str(exc))
 

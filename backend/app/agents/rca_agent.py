@@ -188,8 +188,12 @@ class RCAAgent(BaseAgent):
                 if not connection:
                     return [], []
 
-                connector = get_connector(connection, db)
-                rows_raw = await connector.execute_query(bound_sql, timeout=30)
+                from app.core.redis import get_redis
+                from app.services.connections.connection_service import ConnectionService
+                redis = get_redis()
+                credentials = ConnectionService(db, redis)._load_credentials(connection)
+                connector = get_connector(connection.db_type, str(connection.id), redis)
+                rows_raw = await connector.execute_query(credentials, bound_sql)
 
             if not rows_raw:
                 return [], []
