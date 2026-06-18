@@ -13,7 +13,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import CurrentUser, get_redis
 from app.core.settings import get_settings
 from app.db.session import get_db
-from app.schemas.auth import LoginRequest, LoginResponse, RefreshResponse, UserResponse
+from app.schemas.auth import (
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    LoginRequest,
+    LoginResponse,
+    RefreshResponse,
+    RegisterRequest,
+    ResetPasswordRequest,
+    UserResponse,
+)
 from app.schemas.base import APIResponse
 from app.services.auth.auth_service import AuthService, REFRESH_TOKEN_COOKIE
 
@@ -37,6 +46,50 @@ def _svc(
     return AuthService(db, redis)
 
 
+@router.post("/register", response_model=APIResponse[LoginResponse], status_code=201)
+async def register(
+    body: RegisterRequest,
+    response: Response,
+    svc: AuthService = Depends(_svc),
+) -> APIResponse[LoginResponse]:
+    """Self-serve signup: create a new organization + its admin and sign in."""
+    login_response, refresh_token = await svc.register_organization(
+        organization_name=body.organization_name,
+        full_name=body.full_name,
+        email=body.email,
+        password=body.password,
+    )
+    response.set_cookie(value=refresh_token, **_COOKIE_OPTS)
+    return APIResponse(data=login_response, message="Organization created.")
+
+
+@router.post("/forgot-password", response_model=APIResponse[ForgotPasswordResponse])
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    svc: AuthService = Depends(_svc),
+) -> APIResponse[ForgotPasswordResponse]:
+    """Request a password reset. Always responds the same way (so it never
+    reveals whether an email is registered). With no email service configured,
+    the reset token is returned in the response in non-production."""
+    token = await svc.request_password_reset(body.email)
+    data = ForgotPasswordResponse(
+        message="If an account exists for that email, a password reset link has been issued."
+    )
+    if token and not settings.is_production:
+        data.reset_token = token
+    return APIResponse(data=data)
+
+
+@router.post("/reset-password", response_model=APIResponse[None])
+async def reset_password(
+    body: ResetPasswordRequest,
+    svc: AuthService = Depends(_svc),
+) -> APIResponse[None]:
+    """Set a new password using a valid reset token."""
+    await svc.reset_password(body.token, body.new_password)
+    return APIResponse(message="Password updated. You can now sign in.")
+
+
 @router.post("/login", response_model=APIResponse[LoginResponse])
 async def login(
     body: LoginRequest,
@@ -44,13 +97,17 @@ async def login(
     response: Response,
     svc: AuthService = Depends(_svc),
 ) -> APIResponse[LoginResponse]:
-    # Tenant resolved from X-Tenant-ID header (or first tenant for dev convenience)
+    from app.core.exceptions import UnauthorizedError
+
+    # Tenant comes from the X-Tenant-ID header when present (e.g. the demo
+    # account), otherwise it's resolved from the email (self-serve accounts).
     tenant_header = request.headers.get("X-Tenant-ID", "")
     try:
         tenant_id = uuid.UUID(tenant_header)
     except ValueError:
-        from app.core.exceptions import UnauthorizedError
-        raise UnauthorizedError("Missing or invalid X-Tenant-ID header.")
+        tenant_id = await svc.resolve_tenant_for_email(body.email)
+    if not tenant_id:
+        raise UnauthorizedError("Invalid email or password.")
 
     login_response, refresh_token = await svc.login(body.email, body.password, tenant_id)
     response.set_cookie(value=refresh_token, **_COOKIE_OPTS)

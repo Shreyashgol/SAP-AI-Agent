@@ -5,10 +5,12 @@ and **why**. It spans six pieces of work, in the order they were built:
 
 1. Conversational / "human" queries answered properly (not the SQL pipeline)
 2. ChatGPT-style chat UI (Markdown, example prompts, copy/regenerate, typewriter)
-3. Dark theme with a toggle button
+3. Dark theme with a toggle button — shell + chat, then all feature pages (§ 3a)
 4. Text-to-SQL runtime fallback (when no curated tool matches)
 5. Improved narrative system prompt (explanation + key insights)
 6. Reasoning panel — first end-of-response, then **live** streaming as the agent thinks
+7. Authentication — self-serve Sign Up (new org) + email Sign In + Forgot password,
+   real auth flow (incl. a demo-login bug fix)
 
 Environment note (unchanged from prior session): the app runs natively. The chat
 path uses the Anthropic API; the local key is invalid, so LLM-phrased replies fall
@@ -118,10 +120,35 @@ copy/regenerate, and streaming-style output.
   `LiveReasoning` carry full `dark:` variants — sidebar, rows, tables, follow-up
   chips, composer, empty states, etc.
 
-**Caveat (documented):** the shell + chat experience are fully themed. The other
-feature pages (Dashboards, Connections, Catalog, Tools, …) don't yet have their own
-per-element `dark:` classes, so their light cards still render light inside the dark
-shell until they get the same pass.
+**Caveat (at the time):** initially only the shell + chat were themed; the other
+feature pages were completed later — see § 3a.
+
+### 3a. Dark theme across all feature pages (follow-up)
+**Goal (user request):** make Dashboards, Connections, Catalog (Discovery), Semantic,
+KG, Tools, Documents, Alerts and Admin work in dark/light. These were light-only
+Tailwind (`bg-white`, `text-gray-900`, `border-gray-200`, …) with **no** `dark:`
+variants. Fixed in three layers:
+
+1. **Global dark defaults (`frontend/src/index.css`)** — two `@layer base` rules:
+   - Form controls (`input`/`select`/`textarea`) → `bg-gray-900 text-gray-100
+     border-gray-700` + dark placeholder, so un-backgrounded inputs are readable.
+     Controls with an explicit `dark:bg-*` (chat composer, themed selects) override it.
+   - Default border colour → Tailwind preflight defaults every border to light
+     gray-200, so bare `border`/`border-b`/`border-l` would be bright lines on dark;
+     a `.dark *` rule sets gray-700 (explicit `border-*`/`dark:border-*` still win).
+2. **Systematic `dark:` variants** — **525 substitutions** across the 9 pages +
+   `CustomToolBuilderPage` via a one-shot mapping script (cards `bg-white →
+   dark:bg-gray-800`, text greys, borders, dividers, hovers, and status tints
+   green/red/amber/blue/brand). The script was removed after running.
+3. **Manual fixes** the class pass couldn't reach:
+   - KG graph nodes hardcoded `backgroundColor:"white"` inline → theme-aware via the
+     `useTheme` store (gray-800 in dark).
+   - Leftover tokens: chat avatar, Discovery progress-bar track, Tool-catalogue
+     indigo selection/hover; composer textarea got `dark:bg-transparent` to survive
+     the new form-control base rule.
+
+**Note:** rules-based pass (not visually rendered here) — vivid KG domain hex colours
+are intentionally kept; chart axis/grid libraries may still need their own dark props.
 
 ---
 
@@ -225,6 +252,103 @@ step-by-step "thinking" the reasoning panel shows.
 
 ---
 
+## 7. Authentication — Sign Up + Sign In
+
+**Goal (user request):** add/complete the auth feature that had been removed. Before
+this, the backend had `login`/`refresh`/`logout`/`me` but **no register endpoint**,
+and the frontend had **no login UI** — `AuthGate` silently auto-logged-in with
+hardcoded demo credentials.
+
+**Product decisions (chosen by the user):** Sign Up creates a **new organization
+(tenant)** with the signer as `platform_admin`; Sign In is **by email** (email is
+globally unique, so the tenant is resolved from the email — no org field); a
+**"Continue as demo"** fallback is kept for quick testing.
+
+### Backend
+- `backend/app/schemas/auth.py` — new `RegisterRequest` (organization_name,
+  full_name, email, password ≥ 8).
+- `backend/app/services/auth/auth_service.py`:
+  - `register_organization(...)` — enforces **global email uniqueness**, derives a
+    unique tenant slug (`_unique_slug`), calls the existing
+    `RBACService.bootstrap_tenant(...)` (tenant + 4 system roles + first
+    `platform_admin`), then auto-signs-in.
+  - `resolve_tenant_for_email(...)` — returns the tenant when exactly one active
+    user has that email (used by email-only login).
+  - `_issue_session(...)` — token issuance (access + refresh jti in Redis) factored
+    out and shared by `login` and `register`.
+- `backend/app/api/v1/endpoints/auth.py`:
+  - `POST /auth/register` (201) — creates the org and sets the httpOnly refresh
+    cookie.
+  - `POST /auth/login` — resolves the tenant **from the email** when no valid
+    `X-Tenant-ID` header is present; the header path still works (demo account).
+- Tests — `backend/tests/integration/test_auth_register.py`: register creates org +
+  signs in; email-only login; duplicate email → 409; short password → 422. (These
+  need the integration test DB; they collect cleanly and run in CI.)
+
+### Frontend
+- `frontend/src/pages/SignInPage.tsx` / `SignUpPage.tsx` (new) — dark-themed forms
+  with validation/error states; sign-in includes the **Continue as demo** button.
+- `frontend/src/stores/auth.ts` (new) — zustand auth store
+  (`status: loading|authed|anon`, `user`, `init/signIn/signUp/continueAsDemo/signOut`).
+- `frontend/src/lib/api.ts` — `signIn`/`signUp` (raw axios with **no** tenant header
+  so the backend resolves by email), `fetchMe`, `signOut`, `continueAsDemo`,
+  `AuthUser` type; the 401 interceptor now does a **silent token refresh** (httpOnly
+  cookie) instead of the old demo-relogin; `clearAuth` clears the tenant too; exported
+  `getTenant`.
+- `frontend/src/App.tsx` — public `/signin` + `/signup`; the rest behind
+  `RequireAuth` (anon → `/signin`, spinner while validating the token on load via
+  `useAuth.init()`); `PublicOnly` redirects already-authed users away from the auth
+  pages. Replaces the old auto-login `AuthGate`.
+- `frontend/src/components/layout/AppShell.tsx` — shows the signed-in user + a
+  **Sign out** button next to the theme toggle.
+
+**Note:** global email uniqueness is enforced at signup; if older seeded data shares
+an email across tenants, email-only login returns a safe "invalid credentials"
+rather than guessing. The demo account is unaffected (it uses the tenant-header path).
+
+### 7a. Demo sign-in bug + stale credentials (follow-up)
+**Problem:** "Continue as demo" showed "Demo sign-in is unavailable." Two causes:
+(1) the demo defaults (`onboarder@testcorp.com`, tenant `a480c09a…`) didn't exist —
+the DB only had tenant `2d829cfe…` ("Default") with `admin@example.com`; and (2) a
+**latent backend bug** — when `_get_user_by_email` finds no user it runs a
+timing-safe dummy `verify_password` against a **malformed** placeholder hash
+(`"$2b$12$dummy_hash_padding_for_timing"`), which passlib rejects with `ValueError`
+→ **HTTP 500** instead of a clean 401.
+
+**Changes:**
+- `backend/app/services/auth/auth_service.py` — replaced the malformed placeholder
+  with a valid bcrypt hash (`_DUMMY_HASH`, computed once); unknown-email logins now
+  return a proper **401**, not a 500.
+- Seeded a real demo account `demo@example.com` / `Demo123!pass` (platform_admin) in
+  the Default tenant (additive; doesn't touch `admin@example.com`).
+- `frontend/src/lib/api.ts` — repointed demo defaults to tenant `2d829cfe…` /
+  `demo@example.com`; `continueAsDemo` is now a single login call (no fragile
+  second `/auth/me`).
+- `frontend/src/pages/SignInPage.tsx` — surfaces the **real** error (backend
+  unreachable / server error / API message) instead of a blanket "unavailable".
+
+### 7b. Admin password reset + Forgot-password flow
+- Reset `admin@example.com` to `Admin123!pass` (its original password was a discarded
+  random `secrets.token_urlsafe(24)` from `deps.py`, so it was unrecoverable).
+- **Forgot/reset password (new):**
+  - `backend/app/schemas/auth.py` — `ForgotPasswordRequest/Response`,
+    `ResetPasswordRequest`.
+  - `backend/app/services/auth/auth_service.py` — `request_password_reset(...)`
+    (single-use token in Redis, 30-min TTL; `None` if no single user matches) and
+    `reset_password(...)` (consumes token, sets new hash, clears lockout).
+  - `backend/app/api/v1/endpoints/auth.py` — `POST /auth/forgot-password` (always
+    200, never reveals whether an email exists; returns the token in the response in
+    **non-production** since no email service is configured) and
+    `POST /auth/reset-password`.
+  - Frontend — `ForgotPasswordPage` + `ResetPasswordPage`, a **Forgot password?**
+    link on sign-in, routes `/forgot-password` + `/reset-password`,
+    `forgotPassword`/`resetPassword` API helpers, and a shared `lib/authError.ts`
+    (`authErrMessage`) adopted across the auth pages.
+  - Tests — added to `tests/integration/test_auth_register.py`: forgot→reset→login,
+    unknown-email-is-safe-200, bad-token-401.
+
+---
+
 ## Verification
 
 - **Backend:** affected unit suites pass (agent graph, runtime fixes, conversation
@@ -232,16 +356,28 @@ step-by-step "thinking" the reasoning panel shows.
   plus the new conversation tests. Graph compiles with the `text_to_sql` node;
   `_stream_step` mapper sanity-checked.
 - **Frontend:** `tsc -b` clean and `vite build` succeeds at every milestone
-  (CSS grew as Markdown/typography + dark variants were added).
+  (CSS grew as Markdown/typography + dark variants were added). The all-pages dark
+  pass (§ 3a) builds clean; coverage audited (every `bg-white` has a dark counterpart,
+  plus `bg-gray-200`/`bg-indigo-50`/hex spot-checks).
+- **Auth:** backend unit suites still pass after the `auth_service` refactor; the new
+  register/login integration tests collect cleanly (they need the integration DB to
+  execute, so they run in CI). Frontend `tsc`/`build` green with the new auth pages,
+  store and routing.
 
 ## Known gaps / next steps
 
 - Extend the full reasoning step-trace to the Trend / RCA / Document / Web agents
   (they build their own lineage, so their panel currently shows intent/confidence
   at minimum).
-- Give the non-chat feature pages a `dark:` pass for full dark-mode coverage.
+- Dark mode now covers all feature pages (§ 3a); remaining polish is visual-only —
+  verify charts/graph visualizations in the running app and tune any vivid colours.
 - True token-level streaming of the final answer (and within-node LLM streaming)
   remains a future enhancement; today's streaming is node-granular for reasoning,
   with a client-side typewriter for the final answer.
 - Text-to-SQL recall edge cases (some phrasings embed below threshold) still degrade
   to the fallback, which is the intended safety behaviour.
+- Auth follow-ups: password reset now exists, but there's no real **email delivery**
+  (the reset token is returned in-response in non-production — wire SMTP/provider for
+  prod), no email verification, and no invite-teammates-to-an-existing-org flow yet
+  (signup always creates a new org). Silent refresh on 401 relies on the httpOnly
+  refresh cookie round-tripping through the dev proxy.

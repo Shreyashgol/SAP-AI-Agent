@@ -417,7 +417,7 @@ function AnswerCard({
 function Avatar({ role }: { role: "user" | "assistant" }) {
   if (role === "user") {
     return (
-      <div className="w-8 h-8 shrink-0 rounded-full bg-gray-200 flex items-center justify-center text-gray-600">
+      <div className="w-8 h-8 shrink-0 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300">
         <User className="w-4 h-4" />
       </div>
     );
@@ -796,7 +796,7 @@ function Composer({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder="Message the SAP B1 Assistant…"
-            className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none max-h-40"
+            className="flex-1 resize-none bg-transparent dark:bg-transparent px-2 py-1.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none max-h-40"
             disabled={disabled}
           />
           <button

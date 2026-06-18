@@ -13,4 +13,27 @@
   *:focus-visible {
     @apply outline-none ring-2 ring-brand-500 ring-offset-2;
   }
+
+  /* Dark-mode defaults for form controls. Pages that set an explicit `dark:bg-*`
+     utility on a control override this (higher specificity), so the chat composer
+     (dark:bg-transparent) and themed selects keep their own styling. */
+  .dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  .dark select,
+  .dark textarea {
+    @apply bg-gray-900 text-gray-100 border-gray-700;
+  }
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    @apply text-gray-500;
+  }
+
+  /* Default border colour in dark mode. Tailwind's preflight defaults every
+     border to gray-200 (light), so bare `border`/`border-b`/`border-l` utilities
+     would show as bright lines on dark. Explicit `border-*` and `dark:border-*`
+     utilities have higher precedence and still win. */
+  .dark *,
+  .dark ::before,
+  .dark ::after {
+    @apply border-gray-700;
+  }
 }

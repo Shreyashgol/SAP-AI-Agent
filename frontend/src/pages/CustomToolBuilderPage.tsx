@@ -11,7 +11,7 @@ import type { Tool } from "@/hooks/useTools";
 
 const DOMAIN_BADGE: Record<string, string> = {
   finance:    "bg-indigo-100 text-indigo-800",
-  sales:      "bg-green-100 text-green-800",
+  sales:      "bg-green-100 text-green-800 dark:text-green-300",
   purchasing: "bg-amber-100 text-amber-800",
   inventory:  "bg-teal-100 text-teal-800",
   operations: "bg-red-100 text-red-800",
@@ -70,8 +70,8 @@ export default function CustomToolBuilderPage() {
     <div className="max-w-5xl mx-auto p-6 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Custom Tool Builder</h1>
-        <p className="text-gray-500 mt-1 text-sm">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Custom Tool Builder</h1>
+        <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">
           Describe what you want to query in plain English — Claude will generate a
           validated, parameterised SQL tool.
         </p>
@@ -98,11 +98,11 @@ export default function CustomToolBuilderPage() {
       </div>
 
       {/* Builder form */}
-      <div className="bg-white border rounded-xl p-6 space-y-4">
-        <h2 className="text-base font-semibold text-gray-900">Generate New Tool</h2>
+      <div className="bg-white dark:bg-gray-800 border rounded-xl p-6 space-y-4">
+        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Generate New Tool</h2>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Description <span className="text-red-500">*</span>
           </label>
           <textarea
@@ -115,9 +115,9 @@ export default function CustomToolBuilderPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Context tables{" "}
-            <span className="text-gray-400 font-normal">(optional, comma-separated)</span>
+            <span className="text-gray-400 dark:text-gray-500 font-normal">(optional, comma-separated)</span>
           </label>
           <input
             type="text"
@@ -137,7 +137,7 @@ export default function CustomToolBuilderPage() {
         </button>
 
         {buildError && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-lg p-3 text-sm text-red-700 dark:text-red-300">
             <p className="font-medium">Build failed</p>
             <p className="mt-0.5">{buildError}</p>
           </div>
@@ -147,10 +147,10 @@ export default function CustomToolBuilderPage() {
       </div>
 
       {/* Semantic Search / Ranking Test Panel */}
-      <div className="bg-white border rounded-xl p-6 space-y-4">
+      <div className="bg-white dark:bg-gray-800 border rounded-xl p-6 space-y-4">
         <div>
-          <h2 className="text-base font-semibold text-gray-900">Tool Ranking Preview</h2>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Tool Ranking Preview</h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
             Test how the ranking engine responds to a natural-language question.
           </p>
         </div>
@@ -176,11 +176,11 @@ export default function CustomToolBuilderPage() {
         </div>
 
         {rankingLoading && (
-          <p className="text-sm text-gray-400">Ranking…</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500">Ranking…</p>
         )}
 
         {!rankingLoading && searchEnabled && rankedTools.length === 0 && (
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-gray-400 dark:text-gray-500">
             No matching tools found. Try embedding tools first.
           </p>
         )}
@@ -217,7 +217,7 @@ function EmbedButton({
       className={`px-3 py-2 text-sm rounded-lg disabled:opacity-50 transition-colors ${
         variant === "primary"
           ? "bg-indigo-600 text-white hover:bg-indigo-700"
-          : "border text-gray-700 hover:bg-gray-50"
+          : "border text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
       }`}
     >
       {isPending ? "Running…" : label}
@@ -229,32 +229,32 @@ function BuiltToolCard({ tool }: { tool: Tool }) {
   const [showSQL, setShowSQL] = useState(false);
 
   return (
-    <div className="border border-green-200 bg-green-50 rounded-lg p-4 space-y-3">
+    <div className="border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/40 rounded-lg p-4 space-y-3">
       <div className="flex items-start justify-between">
         <div>
-          <p className="font-semibold text-green-800">Tool created successfully</p>
-          <p className="text-sm text-green-700 mt-0.5 font-mono">{tool.name}</p>
+          <p className="font-semibold text-green-800 dark:text-green-300">Tool created successfully</p>
+          <p className="text-sm text-green-700 dark:text-green-300 mt-0.5 font-mono">{tool.name}</p>
         </div>
         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-          DOMAIN_BADGE[tool.domain] || "bg-gray-100 text-gray-700"
+          DOMAIN_BADGE[tool.domain] || "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
         }`}>
           {tool.domain}
         </span>
       </div>
 
-      <p className="text-sm text-gray-700">{tool.description}</p>
+      <p className="text-sm text-gray-700 dark:text-gray-300">{tool.description}</p>
 
       {tool.input_schema.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Parameters</p>
+          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">Parameters</p>
           <div className="flex flex-wrap gap-1.5">
             {tool.input_schema.map((p) => (
               <span
                 key={p.name}
-                className="text-xs bg-white border px-2 py-0.5 rounded font-mono text-gray-700"
+                className="text-xs bg-white dark:bg-gray-800 border px-2 py-0.5 rounded font-mono text-gray-700 dark:text-gray-300"
               >
                 :{p.name}
-                <span className="text-gray-400 ml-1">({p.type})</span>
+                <span className="text-gray-400 dark:text-gray-500 ml-1">({p.type})</span>
               </span>
             ))}
           </div>
@@ -286,31 +286,31 @@ function RankedToolCard({
 }) {
   const scoreColor =
     tool.final_score >= 0.8
-      ? "text-green-700"
+      ? "text-green-700 dark:text-green-300"
       : tool.final_score >= 0.6
       ? "text-yellow-700"
-      : "text-red-600";
+      : "text-red-600 dark:text-red-400";
 
   return (
     <div className="border rounded-lg p-3 flex items-start gap-3">
-      <span className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 text-xs font-bold flex items-center justify-center flex-shrink-0">
+      <span className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-bold flex items-center justify-center flex-shrink-0">
         {rank}
       </span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <p className="font-medium text-gray-900 text-sm">{tool.tool_name}</p>
+          <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{tool.tool_name}</p>
           <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
-            DOMAIN_BADGE[tool.domain] || "bg-gray-100 text-gray-700"
+            DOMAIN_BADGE[tool.domain] || "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
           }`}>
             {tool.domain}
           </span>
-          <span className="text-xs text-gray-400">{tool.category.replace("_", " ")}</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">{tool.category.replace("_", " ")}</span>
         </div>
         {tool.description && (
-          <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{tool.description}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{tool.description}</p>
         )}
         {/* Score breakdown */}
-        <div className="flex gap-3 mt-1.5 text-xs text-gray-400">
+        <div className="flex gap-3 mt-1.5 text-xs text-gray-400 dark:text-gray-500">
           <span className={`font-semibold ${scoreColor}`}>
             {(tool.final_score * 100).toFixed(1)}% final
           </span>

@@ -30,13 +30,13 @@ const DB_DEFAULTS: Record<"hana" | "mssql", { port: number; placeholder: string 
 };
 
 function StatusBadge({ status }: { status: string | null }) {
-  if (!status) return <span className="text-xs text-gray-400">Never checked</span>;
+  if (!status) return <span className="text-xs text-gray-400 dark:text-gray-500">Never checked</span>;
   return status === "ok" ? (
-    <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+    <span className="inline-flex items-center gap-1 text-xs text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950/40 px-2 py-0.5 rounded-full">
       <CheckCircle className="h-3 w-3" /> Healthy
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1 text-xs text-red-700 bg-red-50 px-2 py-0.5 rounded-full">
+    <span className="inline-flex items-center gap-1 text-xs text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded-full">
       <XCircle className="h-3 w-3" /> Error
     </span>
   );
@@ -44,24 +44,24 @@ function StatusBadge({ status }: { status: string | null }) {
 
 function TestResultPanel({ result }: { result: TestResult }) {
   return result.success ? (
-    <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg text-sm">
-      <p className="font-medium text-green-800 flex items-center gap-1">
+    <div className="mt-2 p-3 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-900 rounded-lg text-sm">
+      <p className="font-medium text-green-800 dark:text-green-300 flex items-center gap-1">
         <CheckCircle className="h-4 w-4" /> Connection successful
       </p>
-      <ul className="mt-1 text-green-700 space-y-0.5 text-xs">
+      <ul className="mt-1 text-green-700 dark:text-green-300 space-y-0.5 text-xs">
         {result.latency_ms != null && <li>Latency: {result.latency_ms}ms</li>}
         {result.db_version && <li>Version: {result.db_version}</li>}
         <li>
           Read-only: {result.is_read_only ? (
-            <span className="text-green-800 font-medium">✓ Confirmed</span>
+            <span className="text-green-800 dark:text-green-300 font-medium">✓ Confirmed</span>
           ) : (
-            <span className="text-amber-700 font-medium">⚠ Write access detected</span>
+            <span className="text-amber-700 dark:text-amber-300 font-medium">⚠ Write access detected</span>
           )}
         </li>
       </ul>
     </div>
   ) : (
-    <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+    <div className="mt-2 p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-lg text-sm text-red-700 dark:text-red-300">
       <p className="font-medium flex items-center gap-1"><XCircle className="h-4 w-4" /> Failed</p>
       <p className="text-xs mt-0.5">{result.error}</p>
     </div>
@@ -101,8 +101,8 @@ export default function ConnectionsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Connections</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Connections</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Connect to SAP Business One HANA or Microsoft SQL Server
           </p>
         </div>
@@ -117,28 +117,28 @@ export default function ConnectionsPage() {
 
       {/* Create form */}
       {showForm && (
-        <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
-          <h2 className="text-base font-semibold text-gray-900 mb-4">New connection</h2>
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6 shadow-sm">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">New connection</h2>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               {/* Name */}
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
                 <input {...register("name")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   placeholder="SAP B1 Production" />
-                {errors.name && <p className="text-xs text-red-600 mt-1">{errors.name.message}</p>}
+                {errors.name && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.name.message}</p>}
               </div>
 
               {/* DB type */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Database type</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Database type</label>
                 <select {...register("db_type")}
                   onChange={(e) => {
                     const t = e.target.value as "hana" | "mssql";
                     reset({ ...watch(), db_type: t, port: DB_DEFAULTS[t].port });
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
                   <option value="hana">SAP B1 HANA</option>
                   <option value="mssql">Microsoft SQL Server</option>
                 </select>
@@ -146,61 +146,61 @@ export default function ConnectionsPage() {
 
               {/* Host */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Host</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Host</label>
                 <input {...register("host")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   placeholder="192.168.1.100" />
-                {errors.host && <p className="text-xs text-red-600 mt-1">{errors.host.message}</p>}
+                {errors.host && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.host.message}</p>}
               </div>
 
               {/* Port */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Port</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Port</label>
                 <input {...register("port")} type="number"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
-                {errors.port && <p className="text-xs text-red-600 mt-1">{errors.port.message}</p>}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                {errors.port && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.port.message}</p>}
               </div>
 
               {/* Database name */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Database name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Database name</label>
                 <input {...register("database_name")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   placeholder={dbType === "hana" ? "SBODemoUS" : "SBODB"} />
-                {errors.database_name && <p className="text-xs text-red-600 mt-1">{errors.database_name.message}</p>}
+                {errors.database_name && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.database_name.message}</p>}
               </div>
 
               {/* Username */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
                 <input {...register("username")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   placeholder="readonly_user" autoComplete="off" />
-                {errors.username && <p className="text-xs text-red-600 mt-1">{errors.username.message}</p>}
+                {errors.username && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.username.message}</p>}
               </div>
 
               {/* Password */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
                 <input {...register("password")} type="password"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   autoComplete="new-password" />
-                {errors.password && <p className="text-xs text-red-600 mt-1">{errors.password.message}</p>}
+                {errors.password && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.password.message}</p>}
               </div>
 
               {/* TLS */}
               <div className="col-span-2 flex items-center gap-2">
                 <input {...register("is_tls")} type="checkbox" id="is_tls"
-                  className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500" />
-                <label htmlFor="is_tls" className="text-sm text-gray-700 flex items-center gap-1">
-                  <Shield className="h-3.5 w-3.5 text-gray-400" />
+                  className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-brand-600 focus:ring-brand-500" />
+                <label htmlFor="is_tls" className="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                  <Shield className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                   Require TLS/SSL encryption
                 </label>
               </div>
             </div>
 
             {createMutation.isError && (
-              <div role="alert" className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <div role="alert" className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-lg px-3 py-2">
                 {(createMutation.error as { response?: { data?: { error?: { message?: string } } } })
                   ?.response?.data?.error?.message ?? "Failed to create connection."}
               </div>
@@ -212,7 +212,7 @@ export default function ConnectionsPage() {
                 {isSubmitting ? "Saving…" : "Save connection"}
               </button>
               <button type="button" onClick={() => setShowForm(false)}
-                className="px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors">
+                className="px-4 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                 Cancel
               </button>
             </div>
@@ -222,30 +222,30 @@ export default function ConnectionsPage() {
 
       {/* Connection list */}
       {isLoading ? (
-        <div className="flex items-center gap-2 text-gray-500 text-sm">
+        <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading connections…
         </div>
       ) : connections.length === 0 ? (
-        <div className="text-center py-16 bg-white border border-dashed border-gray-300 rounded-xl">
-          <Database className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 font-medium">No connections yet</p>
-          <p className="text-sm text-gray-400 mt-1">Add your first SAP B1 HANA or MSSQL connection above.</p>
+        <div className="text-center py-16 bg-white dark:bg-gray-800 border border-dashed border-gray-300 dark:border-gray-600 rounded-xl">
+          <Database className="h-10 w-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+          <p className="text-gray-500 dark:text-gray-400 font-medium">No connections yet</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Add your first SAP B1 HANA or MSSQL connection above.</p>
         </div>
       ) : (
         <div className="space-y-3">
           {connections.map((conn: Connection) => (
-            <div key={conn.id} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+            <div key={conn.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-sm">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 bg-brand-50 rounded-lg flex items-center justify-center shrink-0">
+                  <div className="h-9 w-9 bg-brand-50 dark:bg-brand-900/30 rounded-lg flex items-center justify-center shrink-0">
                     <Database className="h-5 w-5 text-brand-600" />
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">{conn.name}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{conn.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                       {conn.db_type === "hana" ? "SAP B1 HANA" : "Microsoft SQL Server"}
                       {" · "}{conn.host}:{conn.port}{" · "}{conn.database_name}
-                      {conn.is_tls && <span className="ml-1 text-green-600">🔒 TLS</span>}
+                      {conn.is_tls && <span className="ml-1 text-green-600 dark:text-green-400">🔒 TLS</span>}
                     </p>
                   </div>
                 </div>
@@ -255,7 +255,7 @@ export default function ConnectionsPage() {
                   <button
                     onClick={() => handleTest(conn.id)}
                     disabled={testMutation.isPending}
-                    className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-800 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-800 bg-brand-50 dark:bg-brand-900/30 hover:bg-brand-100 dark:hover:bg-brand-900/40 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
                   >
                     {testMutation.isPending && testMutation.variables === conn.id
                       ? <Loader2 className="h-3 w-3 animate-spin" />
@@ -264,7 +264,7 @@ export default function ConnectionsPage() {
                   </button>
                   <button
                     onClick={() => deleteMutation.mutate(conn.id)}
-                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors"
                     aria-label="Delete connection"
                   >
                     <Trash2 className="h-4 w-4" />

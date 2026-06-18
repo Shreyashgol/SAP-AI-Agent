@@ -47,10 +47,10 @@ function WidgetCard({
   };
 
   return (
-    <div className="h-full flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div className="h-full flex flex-col bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
       {/* Widget header */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50">
-        <GripHorizontal className="w-3.5 h-3.5 text-gray-300 cursor-grab" />
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60">
+        <GripHorizontal className="w-3.5 h-3.5 text-gray-300 dark:text-gray-600 cursor-grab" />
         {editingTitle ? (
           <input
             className="flex-1 text-xs font-medium border border-blue-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -65,19 +65,19 @@ function WidgetCard({
           />
         ) : (
           <span
-            className="flex-1 text-xs font-medium text-gray-700 truncate cursor-pointer hover:text-blue-600"
+            className="flex-1 text-xs font-medium text-gray-700 dark:text-gray-300 truncate cursor-pointer hover:text-blue-600"
             onDoubleClick={() => setEditingTitle(true)}
             title="Double-click to rename"
           >
             {widget.title ?? "Untitled"}
           </span>
         )}
-        <span className="text-xs text-gray-400 shrink-0">
+        <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
           {typeLabel[widget.widget_type] ?? widget.widget_type}
         </span>
         <button
           onClick={() => deleteWidget.mutate(widget.id)}
-          className="text-gray-300 hover:text-red-500 transition-colors"
+          className="text-gray-300 dark:text-gray-600 hover:text-red-500 transition-colors"
           title="Remove widget"
         >
           <X className="w-3.5 h-3.5" />
@@ -87,10 +87,10 @@ function WidgetCard({
       {/* Widget body — placeholder for chart rendering */}
       <div className="flex-1 flex items-center justify-center p-4 text-center">
         <div className="space-y-1">
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-400 dark:text-gray-500">
             Turn {widget.conversation_turn_id.slice(0, 8)}…
           </p>
-          <p className="text-xs text-gray-300">{typeLabel[widget.widget_type]}</p>
+          <p className="text-xs text-gray-300 dark:text-gray-600">{typeLabel[widget.widget_type]}</p>
         </div>
       </div>
     </div>
@@ -137,8 +137,8 @@ function DashboardPanel({ dashboard }: { dashboard: Dashboard }) {
           onClick={toggleShare}
           className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-colors ${
             dashboard.is_shared
-              ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-              : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+              ? "bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 border-green-200 dark:border-green-900 hover:bg-green-100"
+              : "bg-gray-50 dark:bg-gray-800/60 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
           }`}
           title={dashboard.is_shared ? "Shared — click to make private" : "Private — click to share"}
         >
@@ -150,7 +150,7 @@ function DashboardPanel({ dashboard }: { dashboard: Dashboard }) {
           {dashboard.is_shared ? "Shared" : "Private"}
         </button>
         {dashboard.is_shared && dashboard.share_token && (
-          <span className="text-xs text-gray-400 font-mono">
+          <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">
             Token: {dashboard.share_token.slice(0, 12)}…
           </span>
         )}
@@ -161,7 +161,7 @@ function DashboardPanel({ dashboard }: { dashboard: Dashboard }) {
               deleteDashboard.mutate(dashboard.id);
             }
           }}
-          className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
+          className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors"
         >
           <Trash2 className="w-3.5 h-3.5" />
           Delete
@@ -170,10 +170,10 @@ function DashboardPanel({ dashboard }: { dashboard: Dashboard }) {
 
       {/* Grid */}
       {(widgets ?? []).length === 0 ? (
-        <div className="border-2 border-dashed border-gray-200 rounded-xl py-16 text-center">
+        <div className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl py-16 text-center">
           <LayoutDashboard className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-          <p className="text-sm text-gray-400">No widgets yet.</p>
-          <p className="text-xs text-gray-300 mt-1">
+          <p className="text-sm text-gray-400 dark:text-gray-500">No widgets yet.</p>
+          <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">
             Pin an answer from the Chat page using the Pin button.
           </p>
         </div>
@@ -222,8 +222,8 @@ export default function DashboardsPage() {
     return (
       <div className="p-8">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-100 rounded w-48" />
-          <div className="h-48 bg-gray-100 rounded" />
+          <div className="h-8 bg-gray-100 dark:bg-gray-800 rounded w-48" />
+          <div className="h-48 bg-gray-100 dark:bg-gray-800 rounded" />
         </div>
       </div>
     );
@@ -232,8 +232,8 @@ export default function DashboardsPage() {
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-56 border-r border-gray-200 bg-gray-50 flex flex-col">
-        <div className="p-3 border-b border-gray-200">
+      <aside className="w-56 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 flex flex-col">
+        <div className="p-3 border-b border-gray-200 dark:border-gray-700">
           <button
             onClick={() => setShowCreate((v) => !v)}
             className="w-full flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
@@ -252,7 +252,7 @@ export default function DashboardsPage() {
                   if (e.key === "Escape") setShowCreate(false);
                 }}
                 placeholder="Dashboard name"
-                className="flex-1 text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
                 onClick={handleCreate}
@@ -270,8 +270,8 @@ export default function DashboardsPage() {
               onClick={() => setActiveDashId(dash.id)}
               className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left transition-colors ${
                 (activeDash?.id === dash.id)
-                  ? "bg-blue-100 text-blue-700"
-                  : "text-gray-700 hover:bg-gray-100"
+                  ? "bg-blue-100 text-blue-700 dark:text-blue-300"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
               }`}
             >
               <LayoutDashboard className="w-4 h-4 shrink-0" />
@@ -280,7 +280,7 @@ export default function DashboardsPage() {
             </button>
           ))}
           {!dashboards?.length && (
-            <p className="text-xs text-gray-400 px-3 py-4 text-center">
+            <p className="text-xs text-gray-400 dark:text-gray-500 px-3 py-4 text-center">
               No dashboards yet.
             </p>
           )}
@@ -291,14 +291,14 @@ export default function DashboardsPage() {
       <div className="flex-1 overflow-y-auto p-6">
         {activeDash ? (
           <div className="space-y-4">
-            <h1 className="text-xl font-semibold text-gray-900">{activeDash.name}</h1>
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{activeDash.name}</h1>
             <DashboardPanel dashboard={activeDash} />
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <LayoutDashboard className="w-16 h-16 text-gray-200 mb-4" />
-            <h2 className="text-xl font-semibold text-gray-700">No dashboards yet</h2>
-            <p className="text-gray-400 mt-2 max-w-sm">
+            <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300">No dashboards yet</h2>
+            <p className="text-gray-400 dark:text-gray-500 mt-2 max-w-sm">
               Create a dashboard, then pin answers from the Chat page to populate it.
             </p>
             <button

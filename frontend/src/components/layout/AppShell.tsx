@@ -10,8 +10,10 @@ import {
   Layers,
   Network,
   Wrench,
+  LogOut,
 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
+import { useAuth } from "@/stores/auth";
 
 const navItems = [
   { to: "/", icon: MessageSquare, label: "Chat" },
@@ -27,6 +29,9 @@ const navItems = [
 ];
 
 export default function AppShell() {
+  const user = useAuth((s) => s.user);
+  const signOut = useAuth((s) => s.signOut);
+
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       {/* Sidebar */}
@@ -60,9 +65,23 @@ export default function AppShell() {
           ))}
         </nav>
 
-        {/* Theme toggle */}
-        <div className="p-2 border-t border-gray-200 dark:border-gray-800">
+        {/* Theme toggle + account */}
+        <div className="p-2 border-t border-gray-200 dark:border-gray-800 space-y-1">
           <ThemeToggle />
+          {user && (
+            <div className="hidden lg:block px-2 pt-1">
+              <p className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate">{user.full_name}</p>
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate">{user.email}</p>
+            </div>
+          )}
+          <button
+            onClick={() => signOut()}
+            title="Sign out"
+            className="flex items-center gap-3 w-full px-2 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-colors"
+          >
+            <LogOut className="h-5 w-5 shrink-0" />
+            <span className="hidden lg:block">Sign out</span>
+          </button>
         </div>
       </aside>
 

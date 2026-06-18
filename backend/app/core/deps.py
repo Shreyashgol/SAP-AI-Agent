@@ -30,6 +30,7 @@ DEFAULT_USER_EMAIL = "admin@example.com"
 DEFAULT_USER_NAME = "Default Admin"
 
 
+
 # ── Current user ──────────────────────────────────────────────────────────────
 
 async def get_current_user(
@@ -64,6 +65,8 @@ async def _bootstrap_default_user(db: AsyncSession) -> User:
             admin_password=secrets.token_urlsafe(24),
             admin_name=DEFAULT_USER_NAME,
         )
+        if user is None:
+            raise RuntimeError("Failed to bootstrap admin user for default tenant.")
         return user
     return await svc.create_user(
         tenant_id=tenant.id,

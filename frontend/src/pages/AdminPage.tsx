@@ -26,36 +26,36 @@ function InviteForm({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="border border-gray-200 rounded-xl p-5 bg-gray-50 space-y-4">
-      <h3 className="font-medium text-gray-900">Invite User</h3>
+    <form onSubmit={handleSubmit} className="border border-gray-200 dark:border-gray-700 rounded-xl p-5 bg-gray-50 dark:bg-gray-800/60 space-y-4">
+      <h3 className="font-medium text-gray-900 dark:text-gray-100">Invite User</h3>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Full name</label>
+          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Full name</label>
           <input
             required
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Jane Smith"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
+          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
           <input
             required
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="jane@company.com"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Initial role (optional)</label>
+          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Initial role (optional)</label>
           <select
             value={roleId}
             onChange={(e) => setRoleId(e.target.value)}
-            className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">No role</option>
             {(roles ?? []).map((r) => (
@@ -65,7 +65,7 @@ function InviteForm({ onClose }: { onClose: () => void }) {
         </div>
       </div>
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onClose} className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
+        <button type="button" onClick={onClose} className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">Cancel</button>
         <button
           type="submit"
           disabled={invite.isPending}
@@ -75,7 +75,7 @@ function InviteForm({ onClose }: { onClose: () => void }) {
         </button>
       </div>
       {invite.isError && (
-        <p className="text-xs text-red-600">{(invite.error as Error).message}</p>
+        <p className="text-xs text-red-600 dark:text-red-400">{(invite.error as Error).message}</p>
       )}
     </form>
   );
@@ -103,34 +103,34 @@ function UserRow({ user }: { user: AdminUser }) {
   }
 
   return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden">
-      <div className="flex items-center gap-4 p-4 bg-white">
+    <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+      <div className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800">
         {/* Expand toggle */}
-        <button onClick={() => setExpanded((v) => !v)} className="text-gray-400 hover:text-gray-600">
+        <button onClick={() => setExpanded((v) => !v)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
           {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         </button>
 
         {/* Avatar initials */}
-        <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-semibold shrink-0">
+        <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 dark:text-blue-300 flex items-center justify-center text-sm font-semibold shrink-0">
           {user.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()}
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900">{user.full_name}</p>
-          <p className="text-xs text-gray-500 truncate">{user.email}</p>
+          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.full_name}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
           {user.is_sso && (
-            <span className="text-xs px-2 py-0.5 bg-violet-50 text-violet-600 border border-violet-200 rounded">SSO</span>
+            <span className="text-xs px-2 py-0.5 bg-violet-50 dark:bg-violet-950/40 text-violet-600 border border-violet-200 rounded">SSO</span>
           )}
           <button
             onClick={toggleActive}
             disabled={patch.isPending}
             className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border transition-colors ${
               user.is_active
-                ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"
+                ? "bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 border-green-200 dark:border-green-900 hover:bg-green-100"
+                : "bg-gray-50 dark:bg-gray-800/60 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
             }`}
             title={user.is_active ? "Click to deactivate" : "Click to activate"}
           >
@@ -145,15 +145,15 @@ function UserRow({ user }: { user: AdminUser }) {
 
       {/* Role management panel */}
       {expanded && (
-        <div className="border-t border-gray-100 bg-gray-50 px-4 py-3 space-y-3">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Roles</p>
+        <div className="border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60 px-4 py-3 space-y-3">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Roles</p>
 
           {addingRole ? (
             <div className="flex items-center gap-2">
               <select
                 value={selectedRoleId}
                 onChange={(e) => setSelectedRoleId(e.target.value)}
-                className="text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select role…</option>
                 {(roles ?? []).map((r) => (
@@ -167,12 +167,12 @@ function UserRow({ user }: { user: AdminUser }) {
               >
                 Assign
               </button>
-              <button onClick={() => setAddingRole(false)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+              <button onClick={() => setAddingRole(false)} className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">Cancel</button>
             </div>
           ) : (
             <button
               onClick={() => setAddingRole(true)}
-              className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800"
+              className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800"
             >
               <Shield className="w-3.5 h-3.5" /> Add role
             </button>
@@ -199,7 +199,7 @@ export default function AdminPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">Admin — User Management</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Admin — User Management</h1>
         <button
           onClick={() => setShowInvite((v) => !v)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
@@ -215,13 +215,13 @@ export default function AdminPage() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search users…"
-        className="w-full text-sm border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
 
       {isLoading && (
         <div className="space-y-3 animate-pulse">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 bg-gray-100 rounded-xl" />
+            <div key={i} className="h-16 bg-gray-100 dark:bg-gray-800 rounded-xl" />
           ))}
         </div>
       )}
@@ -235,14 +235,14 @@ export default function AdminPage() {
       {!isLoading && !isError && (
         <div className="space-y-3">
           {filtered.length === 0 ? (
-            <p className="text-center py-12 text-sm text-gray-400">No users found.</p>
+            <p className="text-center py-12 text-sm text-gray-400 dark:text-gray-500">No users found.</p>
           ) : (
             filtered.map((user) => <UserRow key={user.id} user={user} />)
           )}
         </div>
       )}
 
-      <p className="text-xs text-gray-400 text-right">
+      <p className="text-xs text-gray-400 dark:text-gray-500 text-right">
         {filtered.length} of {users?.length ?? 0} user{users?.length !== 1 ? "s" : ""}
       </p>
     </div>
