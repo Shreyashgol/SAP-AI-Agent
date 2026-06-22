@@ -152,6 +152,11 @@ Rules:
 - If the question is already self-contained, return it unchanged
 - Only use information from the provided conversation history
 - Do NOT invent new filter values or time periods not mentioned in context
+- If the latest user message ANSWERS a clarifying question the assistant just
+  asked, rewrite it as the user's ORIGINAL question (from earlier in the history)
+  with the newly supplied detail filled in. Preserve the original intent and ALL
+  references it made — especially mentions of a policy, document, or guideline
+  (e.g. "our credit policy", "the payment terms in our policy").
 - Keep the rewrite concise — do not add explanation
 - Output ONLY the rewritten question as plain text (no JSON, no quotes, no markdown)
 """
@@ -228,9 +233,22 @@ class ContextAgent(BaseAgent):
         if not has_short_term and not has_long_term:
             return {"enriched_question": question}
 
+        # A clarification follow-up: the previous assistant turn was a clarifying
+        # question (ends with "?"), so this message answers it. Always enrich so it
+        # is rewritten back into the original question (which may be Hybrid/RCA/etc.)
+        # with the new detail filled in — otherwise the bare answer gets re-classified
+        # as a plain Aggregation and loses the original intent (e.g. policy blend).
+        last_assistant = next(
+            (str(t.get("content", "")) for t in reversed(context_turns)
+             if t.get("role") == "assistant"),
+            "",
+        )
+        is_clarification_followup = last_assistant.strip().endswith("?")
+
         # With only same-conversation context and no recalled memory, skip the
-        # enrichment LLM for long, marker-free questions (likely self-contained).
-        if has_short_term and not has_long_term:
+        # enrichment LLM for long, marker-free questions (likely self-contained) —
+        # but never skip a clarification follow-up.
+        if has_short_term and not has_long_term and not is_clarification_followup:
             if not _REFERENCE_MARKERS.search(question) and len(question.split()) > 7:
                 return {"enriched_question": question}
 

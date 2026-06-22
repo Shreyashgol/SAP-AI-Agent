@@ -41,7 +41,13 @@ Intent definitions:
 - Comparative: Compare two or more groups/periods (e.g. "Top 10 customers vs last year")
 - RCA:         Root cause analysis (e.g. "Why did sales drop in March?")
 - Document:    Query from uploaded documents/policies (e.g. "What is our payment policy?")
-- Hybrid:      Combines data query + document knowledge
+- Hybrid:      Combines a database query WITH company-document/policy knowledge in a
+               single question — typically business data measured against a rule from
+               an uploaded policy/guideline. Strong cues: "per our policy", "stated in
+               our policy", "defined in our credit policy", "against our targets",
+               "exceeding the limit in our policy", "past the payment terms in our policy".
+               (e.g. "Which customers exceed the credit limit defined in our credit policy?",
+                "Are any open invoices past the payment terms stated in our policy?")
 - Web:         Needs current external/public information, not internal data
                (e.g. "Latest GST update", "Latest SAP B1 release", "industry benchmark")
 
