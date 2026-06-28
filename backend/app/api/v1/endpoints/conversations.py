@@ -124,7 +124,26 @@ async def list_turns(
     return list(result.scalars().all())
 
 
+# ── Truncate turns ─────────────────────────────────────────────────────────────
+
+@router.delete("/{conversation_id}/turns/{turn_number}", status_code=status.HTTP_204_NO_CONTENT)
+async def truncate_turns(
+    conversation_id: uuid.UUID,
+    turn_number: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user=Depends(get_current_user),
+    tenant=Depends(get_current_tenant),
+):
+    mgr = ConversationManager(db, tenant["id"])
+    conv = await mgr.get_conversation(conversation_id)
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    await mgr.truncate_turns(conversation_id, turn_number)
+
+
 # ── ASK — graph entry point ───────────────────────────────────────────────────
+
 
 @router.post("/{conversation_id}/ask", response_model=AskResponse)
 async def ask(

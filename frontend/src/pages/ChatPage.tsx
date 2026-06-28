@@ -4,6 +4,7 @@ import {
   Send, Plus, Trash2, MessageSquare, BarChart2,
   Table2, TrendingUp, ThumbsUp, ThumbsDown, HelpCircle,
   LayoutDashboard, Copy, Check, RotateCcw, Sparkles, User,
+  Pencil, Square,
 } from "lucide-react";
 import {
   useConversations,
@@ -438,6 +439,8 @@ function MessageRow({
   onClarify,
   onFollowUp,
   onRegenerate,
+  onEdit,
+  busy,
 }: {
   turn: ConversationTurn;
   conversationId: string;
@@ -445,19 +448,68 @@ function MessageRow({
   onClarify: (q: string) => void;
   onFollowUp: (q: string) => void;
   onRegenerate: (q: string) => void;
+  onEdit: (turnNumber: number, editedQuestion: string) => void;
+  busy: boolean;
 }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(turn.question);
+
   const isClarification =
     (turn.answer_data as Record<string, unknown> | null)?.type === "clarification";
 
   return (
     <div>
       {/* User message row */}
-      <div className="w-full">
+      <div className="w-full group">
         <div className="mx-auto max-w-3xl px-4 py-5 flex gap-4">
           <Avatar role="user" />
           <div className="min-w-0 flex-1 pt-1">
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-0.5">You</p>
-            <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{turn.question}</p>
+            <div className="flex items-center justify-between gap-2 mb-0.5">
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">You</p>
+              {!busy && !isEditing && (
+                <button
+                  onClick={() => {
+                    setEditValue(turn.question);
+                    setIsEditing(true);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
+                  title="Edit message"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            {isEditing ? (
+              <div className="mt-2 space-y-2">
+                <textarea
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  className="w-full text-sm border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100 min-h-[60px] resize-y"
+                />
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    className="px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (editValue.trim() && editValue.trim() !== turn.question) {
+                        onEdit(turn.turn_number, editValue.trim());
+                      }
+                      setIsEditing(false);
+                    }}
+                    className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50"
+                    disabled={!editValue.trim()}
+                  >
+                    Save & Submit
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{turn.question}</p>
+            )}
           </div>
         </div>
       </div>
@@ -545,6 +597,7 @@ export default function ChatPage() {
   const [pendingQuestion, setPendingQuestion] = useState("");
   const [liveSteps, setLiveSteps] = useState<ReasoningStep[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const qc = useQueryClient();
   const { data: conversations } = useConversations();
@@ -557,15 +610,39 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [turns, busy, liveSteps]);
 
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
   async function handleNewConversation() {
     const conv = await createConv.mutateAsync({ connection_id: connectionId ?? undefined });
     setActiveId(conv.id);
+  }
+
+  function handleStop() {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setBusy(false);
+    setPendingQuestion("");
+    setLiveSteps([]);
   }
 
   async function handleSend(question?: string) {
     const q = (question ?? input).trim();
     if (!q || !activeId || busy) return;
     if (!question) setInput("");
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     setBusy(true);
     setPendingQuestion(q);
@@ -577,10 +654,13 @@ export default function ChatPage() {
         onFinal: (data) => {
           if (data?.turn_id) setAnimateTurnId(data.turn_id);
         },
-      });
+      }, controller.signal);
       qc.invalidateQueries({ queryKey: ["conversations", activeId, "turns"] });
       qc.invalidateQueries({ queryKey: ["conversations"] });
-    } catch {
+    } catch (err: any) {
+      if (err.name === "AbortError" || controller.signal.aborted) {
+        return;
+      }
       // Streaming unavailable — fall back to the non-streaming mutation.
       try {
         const res = await ask.mutateAsync({ question: q });
@@ -589,6 +669,55 @@ export default function ChatPage() {
         /* surfaced as an error turn on refetch */
       }
     } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
+      setBusy(false);
+      setPendingQuestion("");
+      setLiveSteps([]);
+    }
+  }
+
+  async function handleEdit(turnNumber: number, editedQuestion: string) {
+    if (busy || !activeId) return;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    setBusy(true);
+    setPendingQuestion(editedQuestion);
+    setLiveSteps([]);
+    try {
+      // 1. Truncate turns from this turn number onwards in backend
+      const { apiClient } = await import("@/lib/api");
+      await apiClient.delete(`/conversations/${activeId}/turns/${turnNumber}`);
+      
+      // 2. Refetch current turns so they disappear from UI immediately
+      await qc.invalidateQueries({ queryKey: ["conversations", activeId, "turns"] });
+
+      // 3. Stream the new question
+      await askStream(activeId, editedQuestion, connectionId, {
+        onStep: (s) => setLiveSteps((prev) => [...prev, s]),
+        onFinal: (data) => {
+          if (data?.turn_id) setAnimateTurnId(data.turn_id);
+        },
+      }, controller.signal);
+      qc.invalidateQueries({ queryKey: ["conversations", activeId, "turns"] });
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+    } catch (err: any) {
+      if (err.name === "AbortError" || controller.signal.aborted) {
+        qc.invalidateQueries({ queryKey: ["conversations", activeId, "turns"] });
+        return;
+      }
+      console.error("Failed to edit turn:", err);
+      qc.invalidateQueries({ queryKey: ["conversations", activeId, "turns"] });
+    } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
       setBusy(false);
       setPendingQuestion("");
       setLiveSteps([]);
@@ -687,6 +816,8 @@ export default function ChatPage() {
                   onClarify={(answer) => handleSend(answer)}
                   onFollowUp={(q) => handleSend(q)}
                   onRegenerate={(q) => handleSend(q)}
+                  onEdit={handleEdit}
+                  busy={busy}
                 />
               ))}
 
@@ -725,6 +856,8 @@ export default function ChatPage() {
               onSend={() => handleSend()}
               onKeyDown={handleKeyDown}
               disabled={busy}
+              busy={busy}
+              onStop={handleStop}
             />
           </>
         ) : activeId ? (
@@ -744,6 +877,8 @@ export default function ChatPage() {
               onSend={() => handleSend()}
               onKeyDown={handleKeyDown}
               disabled={busy}
+              busy={busy}
+              onStop={handleStop}
             />
           </>
         ) : (
@@ -779,12 +914,16 @@ function Composer({
   onSend,
   onKeyDown,
   disabled,
+  busy,
+  onStop,
 }: {
   input: string;
   setInput: (v: string) => void;
   onSend: () => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   disabled: boolean;
+  busy: boolean;
+  onStop?: () => void;
 }) {
   return (
     <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3">
@@ -799,13 +938,23 @@ function Composer({
             className="flex-1 resize-none bg-transparent dark:bg-transparent px-2 py-1.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none max-h-40"
             disabled={disabled}
           />
-          <button
-            onClick={onSend}
-            disabled={!input.trim() || disabled}
-            className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
-          >
-            <Send className="w-4 h-4" />
-          </button>
+          {busy ? (
+            <button
+              onClick={onStop}
+              className="p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors shrink-0"
+              title="Stop generating"
+            >
+              <Square className="w-4 h-4 fill-white text-white" />
+            </button>
+          ) : (
+            <button
+              onClick={onSend}
+              disabled={!input.trim() || disabled}
+              className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          )}
         </div>
         <p className="text-center text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">
           Enter to send · Shift+Enter for a new line

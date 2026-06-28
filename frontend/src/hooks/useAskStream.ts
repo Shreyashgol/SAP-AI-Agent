@@ -26,6 +26,7 @@ export async function askStream(
   question: string,
   connectionId: string | null,
   cb: StreamCallbacks,
+  signal?: AbortSignal,
 ): Promise<void> {
   await ensureAuth();
   const res = await fetch(`/api/v1/conversations/${conversationId}/ask/stream`, {
@@ -36,6 +37,7 @@ export async function askStream(
       Authorization: `Bearer ${getToken() ?? ""}`,
     },
     body: JSON.stringify({ question, connection_id: connectionId ?? undefined }),
+    signal,
   });
 
   if (!res.ok || !res.body) {

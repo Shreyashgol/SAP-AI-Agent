@@ -86,7 +86,76 @@ class ConversationManager:
         )
         return result.scalar_one_or_none()
 
+    async def truncate_turns(self, conversation_id: uuid.UUID, from_turn_number: int) -> None:
+        """Delete all turns and their embeddings from the given turn number onwards."""
+        # Get turn IDs that will be deleted
+        turn_ids_query = select(ConversationTurn.id).where(
+            ConversationTurn.conversation_id == conversation_id,
+            ConversationTurn.turn_number >= from_turn_number
+        )
+        result = await self._db.execute(turn_ids_query)
+        turn_ids = list(result.scalars().all())
+
+        if turn_ids:
+            # Delete embeddings
+            from app.models.conversation import ConversationTurnEmbedding
+            from sqlalchemy import delete
+            await self._db.execute(
+                delete(ConversationTurnEmbedding).where(
+                    ConversationTurnEmbedding.turn_id.in_(turn_ids)
+                )
+            )
+
+            # Delete turns
+            await self._db.execute(
+                delete(ConversationTurn).where(
+                    ConversationTurn.conversation_id == conversation_id,
+                    ConversationTurn.turn_number >= from_turn_number
+                )
+            )
+
+        # Update conversation metadata
+        conv = await self.get_conversation(conversation_id)
+        if conv:
+            conv.updated_at = datetime.now(timezone.utc)
+            conv.turn_count = max(0, from_turn_number - 1)
+
+        await self._db.commit()
+
+        # Rebuild Redis context (short-term memory)
+        try:
+            from app.core.redis import get_redis
+            redis = get_redis()
+            key = f"conv:{conversation_id}:context"
+
+            # Query remaining turns in order
+            remaining_result = await self._db.execute(
+                select(ConversationTurn)
+                .where(ConversationTurn.conversation_id == conversation_id)
+                .order_by(ConversationTurn.turn_number)
+            )
+            remaining_turns = remaining_result.scalars().all()
+
+            context_list = []
+            for t in remaining_turns:
+                context_list.append({"role": "user", "content": t.question})
+                if t.answer_text:
+                    context_list.append({"role": "assistant", "content": t.answer_text})
+
+            # Keep sliding window
+            window = _MAX_CONTEXT_TURNS * 2
+            if len(context_list) > window:
+                context_list = context_list[-window:]
+
+            if context_list:
+                await redis.setex(key, _CONTEXT_TTL, json.dumps(context_list))
+            else:
+                await redis.delete(key)
+        except Exception as exc:
+            _log.warning("conversation.context_rebuild_fail", exc=str(exc))
+
     # ── Turn persistence ──────────────────────────────────────────────────────
+
 
     async def save_turn(
         self,
@@ -172,7 +241,7 @@ class ConversationManager:
         """Return the last N turns as a list of {role, content} dicts."""
         try:
             from app.core.redis import get_redis
-            redis = await get_redis()
+            redis = get_redis()
             key = f"conv:{conversation_id}:context"
             raw = await redis.get(key)
             if raw:
@@ -186,7 +255,7 @@ class ConversationManager:
     ) -> None:
         try:
             from app.core.redis import get_redis
-            redis = await get_redis()
+            redis = get_redis()
             key = f"conv:{conversation_id}:context"
 
             existing = await self.get_context(conversation_id)
