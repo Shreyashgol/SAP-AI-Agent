@@ -1,0 +1,265 @@
+[
+  {
+    "table_name": "OJDT",
+    "business_name": "Journal Entry (GL Transaction)",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Every financial posting in SAP B1 creates one row here. Master of all GL movements — AR invoices, AP invoices, payments, receipts, stock postings all trace back to OJDT.",
+    "is_master": true, "is_header": true, "is_line": false,
+    "total_columns": 35,
+    "primary_key": { "columns": ["TransId"], "confidence": 0.95, "rule": "known_master_transid" },
+    "joins": [
+      { "to_table": "JDT1", "to_business_name": "Journal Entry Line Items (GL Postings)", "from_column": "TransId",  "to_column": "TransId",  "on_clause": "OJDT.TransId = JDT1.TransId",   "join_type": "LEFT", "purpose": "Get debit/credit lines and account codes for the GL entry", "confidence": 0.99 },
+      { "to_table": "OINV", "to_business_name": "A/R Invoice",                             "from_column": "TransId",  "to_column": "TransId",  "on_clause": "OJDT.TransId = OINV.TransId",  "join_type": "LEFT", "purpose": "Find which sales invoice created this journal entry",      "confidence": 0.88 },
+      { "to_table": "OPCH", "to_business_name": "A/P Invoice",                             "from_column": "TransId",  "to_column": "TransId",  "on_clause": "OJDT.TransId = OPCH.TransId",  "join_type": "LEFT", "purpose": "Find which purchase invoice created this journal entry",  "confidence": 0.88 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "TransId",     "business_name": "Journal Entry ID (Internal Key)", "description": "Unique internal ID. Referenced by all financial documents as FK.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "BtfStatus",   "business_name": "Journal Entry Status",            "description": "Status of the journal entry.",                                   "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"P":"Posted","D":"Draft","E":"Error"} },
+      { "column_number": 3,  "field": "TransType",   "business_name": "Transaction Source Type",         "description": "Type of source document that created this entry.",               "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4,  "field": "BaseRef",     "business_name": "Source Document Number",          "description": "DocNum of the originating document (invoice, payment, etc.).",   "type": "nVarChar", "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "RefDate",     "business_name": "Posting Date",                    "description": "Date the GL posting was made — used for period reporting.",       "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "DueDate",     "business_name": "Due Date",                        "description": "Due date for payment-related journal entries.",                  "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "TaxDate",     "business_name": "Document Date",                   "description": "Date on the original source document.",                          "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "Memo",        "business_name": "Journal Entry Narration",         "description": "Narration or description for this GL entry.",                    "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "Ref1",        "business_name": "Reference 1",                     "description": "First reference field — usually source document number.",        "type": "nVarChar", "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "Ref2",        "business_name": "Reference 2",                     "description": "Second reference — often vendor/customer reference.",            "type": "nVarChar", "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 11, "field": "Ref3",        "business_name": "Reference 3",                     "description": "Third reference field.",                                         "type": "nVarChar", "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 12, "field": "CreatedBy",   "business_name": "Created By (User ID)",            "description": "User who posted this journal entry.",                            "type": "Int",      "length": 6,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 13, "field": "CreateDate",  "business_name": "Created Date",                    "description": "Date this journal entry was created.",                           "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 14, "field": "DocNum",      "business_name": "Journal Entry Number",            "description": "User-facing sequential journal entry number.",                   "type": "Int",      "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 15, "field": "IsAutoGen",   "business_name": "System-Generated Flag",           "description": "Y if automatically created by the system (not manual entry).",   "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Y":"Auto-generated","N":"Manual"} }
+    ]
+  },
+  {
+    "table_name": "JDT1",
+    "business_name": "Journal Entry Line Items (GL Debit / Credit Lines)",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Each row is one debit or credit line on a journal entry. Every penny in SAP B1's ledger is stored here. Key table for GL reporting, trial balance, and P&L.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 30,
+    "primary_key": { "columns": ["TransId","Line_ID"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OJDT", "to_business_name": "Journal Entry Header",     "from_column": "TransId",  "to_column": "TransId",  "on_clause": "JDT1.TransId = OJDT.TransId",   "join_type": "LEFT", "purpose": "Get journal entry narration, date, source type", "confidence": 0.99 },
+      { "to_table": "OACT", "to_business_name": "Chart of Accounts",        "from_column": "Account",  "to_column": "AcctCode", "on_clause": "JDT1.Account = OACT.AcctCode",  "join_type": "LEFT", "purpose": "Get account name and account type for each GL line", "confidence": 0.95 },
+      { "to_table": "OCRD", "to_business_name": "Business Partner (Debtor/Creditor)", "from_column": "ContraAct","to_column": "CardCode", "on_clause": "JDT1.ContraAct = OCRD.CardCode", "join_type": "LEFT", "purpose": "Get customer/vendor name for AP/AR control account lines", "confidence": 0.80 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "TransId",    "business_name": "Journal Entry ID",        "description": "FK to OJDT.TransId.",                                "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"OJDT","business_name":"Journal Entry","column":"TransId","confidence":0.99} },
+      { "column_number": 2,  "field": "Line_ID",    "business_name": "GL Line Number",          "description": "Sequential line number within the journal entry.",   "type": "Int",      "length": 6,  "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "Account",    "business_name": "GL Account Code",         "description": "General ledger account code. FK to OACT.AcctCode.", "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": true,  "references": {"table":"OACT","business_name":"Chart of Accounts","column":"AcctCode","confidence":0.95} },
+      { "column_number": 4,  "field": "Debit",      "business_name": "Debit Amount",            "description": "Debit amount for this GL line (zero if credit line).", "type": "Sum",     "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "Credit",     "business_name": "Credit Amount",           "description": "Credit amount for this GL line (zero if debit line).", "type": "Sum",    "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "SYSDeb",     "business_name": "Debit in Local Currency", "description": "Debit in system base currency.",                     "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "SYSCred",    "business_name": "Credit in Local Currency","description": "Credit in system base currency.",                    "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "FCDebit",    "business_name": "Debit in Foreign Currency","description": "Debit in foreign currency (for FC transactions).",  "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "FCCredit",   "business_name": "Credit in Foreign Currency","description": "Credit in foreign currency.",                      "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "ContraAct",  "business_name": "Business Partner / Contra Account", "description": "CardCode or account for contra side. FK to OCRD.", "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": true, "references": {"table":"OCRD","business_name":"Business Partner","column":"CardCode","confidence":0.80} },
+      { "column_number": 11, "field": "ShortName",  "business_name": "Short Name (Card / Account)", "description": "Short name of the business partner or account.",  "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 12, "field": "Ref1",       "business_name": "Reference 1",             "description": "Reference field on the GL line.",                   "type": "nVarChar", "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 13, "field": "Ref2",       "business_name": "Reference 2",             "description": "Second reference on the GL line.",                  "type": "nVarChar", "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 14, "field": "LineMemo",   "business_name": "Line Narration",          "description": "Narration specific to this debit/credit line.",      "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 15, "field": "PrcCode",    "business_name": "Cost Centre / Profit Centre", "description": "FK to OPRC — profit centre for this GL line.", "type": "nVarChar", "length": 8,  "is_pk": false, "is_fk": true,  "references": {"table":"OPRC","business_name":"Profit Centre","column":"PrcCode","confidence":0.82} }
+    ]
+  },
+  {
+    "table_name": "ORCT",
+    "business_name": "Incoming Payment (Customer Receipt)",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Records payments received from customers. Can be matched against one or more A/R invoices. Payment modes include cash, cheque, bank transfer.",
+    "is_master": true, "is_header": true, "is_line": false,
+    "total_columns": 40,
+    "primary_key": { "columns": ["DocEntry"], "confidence": 0.90, "rule": "document_header" },
+    "joins": [
+      { "to_table": "RCT1", "to_business_name": "Incoming Payment Invoice Allocation",  "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "ORCT.DocEntry = RCT1.DocEntry", "join_type": "LEFT", "purpose": "Get which invoices this receipt is settled against",  "confidence": 0.99 },
+      { "to_table": "RCT2", "to_business_name": "Incoming Payment Cheque Details",      "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "ORCT.DocEntry = RCT2.DocEntry", "join_type": "LEFT", "purpose": "Get cheque number, bank, date for cheque receipts",   "confidence": 0.99 },
+      { "to_table": "OCRD", "to_business_name": "Business Partner (Customer)",          "from_column": "CardCode", "to_column": "CardCode", "on_clause": "ORCT.CardCode = OCRD.CardCode",  "join_type": "LEFT", "purpose": "Get customer name and account details",              "confidence": 0.95 },
+      { "to_table": "OJDT", "to_business_name": "Journal Entry",                        "from_column": "TransId",  "to_column": "TransId",  "on_clause": "ORCT.TransId = OJDT.TransId",   "join_type": "LEFT", "purpose": "Get GL posting created when payment was received",  "confidence": 0.90 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "DocEntry",   "business_name": "Receipt Internal ID",          "description": "Unique system key. FK target in RCT1, RCT2.",                  "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "DocNum",     "business_name": "Receipt Number",               "description": "User-facing sequential receipt number.",                        "type": "Int",      "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "DocStatus",  "business_name": "Receipt Status",               "description": "Status of the receipt.",                                       "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"O":"Open","C":"Closed"} },
+      { "column_number": 4,  "field": "CardCode",   "business_name": "Customer Code",                "description": "Customer who made the payment. FK to OCRD.",                    "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": true,  "references": {"table":"OCRD","business_name":"Business Partner (Customer)","column":"CardCode","confidence":0.95} },
+      { "column_number": 5,  "field": "CardName",   "business_name": "Customer Name",                "description": "Customer name at time of receipt.",                             "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "DocDate",    "business_name": "Payment Receipt Date",         "description": "Date payment was received.",                                    "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "DocTotal",   "business_name": "Total Amount Received",        "description": "Total amount received from customer.",                          "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "NoDocSum",   "business_name": "Unallocated / On-Account Amount","description": "Amount received but not yet matched to any invoice.",          "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "CashSum",    "business_name": "Cash Received",                "description": "Portion of payment received in cash.",                          "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "CheckSum",   "business_name": "Cheque Amount Received",       "description": "Portion received by cheque.",                                   "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 11, "field": "TrsfrSum",   "business_name": "Bank Transfer Amount Received","description": "Portion received via bank transfer / NEFT / RTGS.",             "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 12, "field": "DocCur",     "business_name": "Payment Currency",             "description": "Currency in which payment was received.",                       "type": "nVarChar", "length": 3,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 13, "field": "TransId",    "business_name": "Journal Entry ID",             "description": "FK to OJDT.TransId — GL posting for this receipt.",             "type": "Int",      "length": 11, "is_pk": false, "is_fk": true,  "references": {"table":"OJDT","business_name":"Journal Entry","column":"TransId","confidence":0.90} },
+      { "column_number": 14, "field": "Comments",   "business_name": "Remarks",                      "description": "Free-text notes on this receipt.",                              "type": "nVarChar", "length": 254,"is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "RCT1",
+    "business_name": "Incoming Payment Invoice Allocation (Receipt-to-Invoice Matching)",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Links each incoming payment to the specific invoices it settles. Enables AR reconciliation and outstanding balance tracking.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 12,
+    "primary_key": { "columns": ["DocEntry","InvType","DocNum"], "confidence": 0.90, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "ORCT", "to_business_name": "Incoming Payment",  "from_column": "DocEntry",  "to_column": "DocEntry",  "on_clause": "RCT1.DocEntry = ORCT.DocEntry",  "join_type": "LEFT", "purpose": "Get the receipt this allocation belongs to",   "confidence": 0.99 },
+      { "to_table": "OINV", "to_business_name": "A/R Invoice",       "from_column": "DocNum",    "to_column": "DocNum",    "on_clause": "RCT1.DocNum = OINV.DocNum",       "join_type": "LEFT", "purpose": "Get the invoice being settled by this receipt","confidence": 0.85 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",  "business_name": "Receipt Internal ID",        "description": "FK to ORCT.DocEntry.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"ORCT","business_name":"Incoming Payment","column":"DocEntry","confidence":0.99} },
+      { "column_number": 2, "field": "InvType",   "business_name": "Invoice Document Type",      "description": "Type code of the matched invoice (e.g. 13=AR Invoice).", "type": "Int", "length": 6, "is_pk": true, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "DocNum",    "business_name": "Invoice Number",             "description": "DocNum of the invoice being settled.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"OINV","business_name":"A/R Invoice","column":"DocNum","confidence":0.85} },
+      { "column_number": 4, "field": "SumApplied","business_name": "Amount Applied to Invoice",  "description": "How much of the receipt is applied to this invoice.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "ApplDate",  "business_name": "Application Date",          "description": "Date this receipt was matched to the invoice.", "type": "Date", "length": 0, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "RCT2",
+    "business_name": "Incoming Payment Cheque Details",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Details of cheques received as part of an incoming payment — cheque number, bank, branch, date.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 10,
+    "primary_key": { "columns": ["DocEntry","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "ORCT", "to_business_name": "Incoming Payment", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "RCT2.DocEntry = ORCT.DocEntry", "join_type": "LEFT", "purpose": "Link cheque detail to the receipt transaction", "confidence": 0.99 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",  "business_name": "Receipt Internal ID",  "description": "FK to ORCT.DocEntry.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"ORCT","business_name":"Incoming Payment","column":"DocEntry","confidence":0.99} },
+      { "column_number": 2, "field": "LineNum",   "business_name": "Cheque Line Number",   "description": "Sequence for multiple cheques in one receipt.", "type": "Int", "length": 6, "is_pk": true, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "CheckAcc",  "business_name": "Bank Account",         "description": "Bank account cheque is drawn on.", "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4, "field": "CheckNum",  "business_name": "Cheque Number",        "description": "Physical cheque number.", "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "CheckSum",  "business_name": "Cheque Amount",        "description": "Amount of this cheque.", "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "CheckDate", "business_name": "Cheque Date",          "description": "Date written on the cheque.", "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7, "field": "BankCode",  "business_name": "Bank Code",            "description": "Bank where cheque is to be deposited.", "type": "nVarChar", "length": 5, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OVPM",
+    "business_name": "Outgoing Payment (Vendor Payment)",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Records payments made to vendors. Can settle one or more AP invoices. Modes include cash, cheque, bank transfer, NEFT, RTGS.",
+    "is_master": true, "is_header": true, "is_line": false,
+    "total_columns": 40,
+    "primary_key": { "columns": ["DocEntry"], "confidence": 0.90, "rule": "document_header" },
+    "joins": [
+      { "to_table": "VPM1", "to_business_name": "Outgoing Payment Invoice Allocation",  "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "OVPM.DocEntry = VPM1.DocEntry", "join_type": "LEFT", "purpose": "Get which AP invoices are settled by this payment",    "confidence": 0.99 },
+      { "to_table": "VPM2", "to_business_name": "Outgoing Payment Cheque Details",      "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "OVPM.DocEntry = VPM2.DocEntry", "join_type": "LEFT", "purpose": "Get cheque details issued to vendor",                "confidence": 0.99 },
+      { "to_table": "OCRD", "to_business_name": "Business Partner (Vendor)",            "from_column": "CardCode", "to_column": "CardCode", "on_clause": "OVPM.CardCode = OCRD.CardCode",  "join_type": "LEFT", "purpose": "Get vendor name and bank details",                  "confidence": 0.95 },
+      { "to_table": "OJDT", "to_business_name": "Journal Entry",                        "from_column": "TransId",  "to_column": "TransId",  "on_clause": "OVPM.TransId = OJDT.TransId",   "join_type": "LEFT", "purpose": "Get GL posting for this vendor payment",            "confidence": 0.90 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "DocEntry",  "business_name": "Payment Internal ID",           "description": "Unique system key. FK target in VPM1, VPM2.",                   "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "DocNum",    "business_name": "Payment Number",                "description": "User-facing sequential vendor payment number.",                  "type": "Int",      "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "DocStatus", "business_name": "Payment Status",               "description": "Status of the vendor payment.",                                 "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"O":"Open","C":"Closed"} },
+      { "column_number": 4,  "field": "CardCode",  "business_name": "Vendor Code",                  "description": "FK to OCRD — vendor being paid.",                               "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": true,  "references": {"table":"OCRD","business_name":"Business Partner (Vendor)","column":"CardCode","confidence":0.95} },
+      { "column_number": 5,  "field": "CardName",  "business_name": "Vendor Name",                  "description": "Vendor name at time of payment.",                               "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "DocDate",   "business_name": "Payment Date",                 "description": "Date vendor payment was made.",                                 "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "DocTotal",  "business_name": "Total Amount Paid",            "description": "Total amount paid to vendor.",                                  "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "NoDocSum",  "business_name": "On-Account / Advance Payment", "description": "Amount paid on account not matched to any invoice.",             "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "CashSum",   "business_name": "Cash Paid",                    "description": "Cash portion of the payment.",                                  "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "CheckSum",  "business_name": "Cheque Amount Paid",           "description": "Cheque portion of the payment.",                                "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 11, "field": "TrsfrSum",  "business_name": "Bank Transfer Amount Paid",    "description": "NEFT/RTGS portion of the payment.",                             "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 12, "field": "DocCur",    "business_name": "Payment Currency",             "description": "Currency in which payment was made.",                           "type": "nVarChar", "length": 3,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 13, "field": "TransId",   "business_name": "Journal Entry ID",             "description": "FK to OJDT.TransId.",                                           "type": "Int",      "length": 11, "is_pk": false, "is_fk": true,  "references": {"table":"OJDT","business_name":"Journal Entry","column":"TransId","confidence":0.90} },
+      { "column_number": 14, "field": "Comments",  "business_name": "Remarks",                      "description": "Free-text remarks on this payment.",                            "type": "nVarChar", "length": 254,"is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "VPM1",
+    "business_name": "Outgoing Payment Invoice Allocation (Payment-to-Invoice Matching)",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Links each outgoing payment to the AP invoices it settles. Enables AP reconciliation and outstanding payable balance tracking.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 10,
+    "primary_key": { "columns": ["DocEntry","InvType","DocNum"], "confidence": 0.90, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OVPM", "to_business_name": "Outgoing Payment", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "VPM1.DocEntry = OVPM.DocEntry", "join_type": "LEFT", "purpose": "Get the vendor payment this allocation belongs to", "confidence": 0.99 },
+      { "to_table": "OPCH", "to_business_name": "A/P Invoice",      "from_column": "DocNum",   "to_column": "DocNum",   "on_clause": "VPM1.DocNum = OPCH.DocNum",     "join_type": "LEFT", "purpose": "Get the AP invoice being settled",              "confidence": 0.85 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",   "business_name": "Payment Internal ID",       "description": "FK to OVPM.DocEntry.", "type": "Int", "length": 11, "is_pk": true, "is_fk": true, "references": {"table":"OVPM","business_name":"Outgoing Payment","column":"DocEntry","confidence":0.99} },
+      { "column_number": 2, "field": "InvType",    "business_name": "Invoice Document Type",     "description": "Type code of the AP invoice (e.g. 18=AP Invoice).", "type": "Int", "length": 6, "is_pk": true, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "DocNum",     "business_name": "Invoice Number",            "description": "DocNum of the AP invoice being settled.", "type": "Int", "length": 11, "is_pk": true, "is_fk": true, "references": {"table":"OPCH","business_name":"A/P Invoice","column":"DocNum","confidence":0.85} },
+      { "column_number": 4, "field": "SumApplied", "business_name": "Amount Applied to Invoice", "description": "Portion of payment applied to this invoice.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "ApplDate",   "business_name": "Application Date",         "description": "Date this payment was matched to the invoice.", "type": "Date", "length": 0, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "VPM2",
+    "business_name": "Outgoing Payment Cheque Details",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Details of cheques issued to vendors as part of an outgoing payment.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 10,
+    "primary_key": { "columns": ["DocEntry","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OVPM", "to_business_name": "Outgoing Payment", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "VPM2.DocEntry = OVPM.DocEntry", "join_type": "LEFT", "purpose": "Link cheque detail to its vendor payment", "confidence": 0.99 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",  "business_name": "Payment Internal ID", "description": "FK to OVPM.DocEntry.", "type": "Int", "length": 11, "is_pk": true, "is_fk": true, "references": {"table":"OVPM","business_name":"Outgoing Payment","column":"DocEntry","confidence":0.99} },
+      { "column_number": 2, "field": "LineNum",   "business_name": "Cheque Line Number",  "description": "Sequence for multiple cheques in one payment.", "type": "Int", "length": 6, "is_pk": true, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "CheckAcc",  "business_name": "Company Bank Account","description": "Company bank account used to issue this cheque.", "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4, "field": "CheckNum",  "business_name": "Cheque Number",       "description": "Cheque number issued to vendor.", "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "CheckSum",  "business_name": "Cheque Amount",       "description": "Amount on this cheque.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "CheckDate", "business_name": "Cheque Date",         "description": "Date on the issued cheque.", "type": "Date", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7, "field": "BankCode",  "business_name": "Vendor's Bank Code",  "description": "Bank where the cheque is drawn on.", "type": "nVarChar", "length": 5, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OACT",
+    "business_name": "Chart of Accounts (GL Account Master)",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Master table of all GL accounts. Every financial transaction in JDT1 references an account here. Defines the financial reporting structure.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 30,
+    "primary_key": { "columns": ["AcctCode"], "confidence": 0.98, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "JDT1", "to_business_name": "Journal Entry GL Lines",  "from_column": "AcctCode", "to_column": "Account",  "on_clause": "OACT.AcctCode = JDT1.Account",  "join_type": "LEFT", "purpose": "Get all GL postings to this account",       "confidence": 0.95 },
+      { "to_table": "OFPR", "to_business_name": "Financial Reporting Periods","from_column": "AcctCode", "to_column": "AcctCode", "on_clause": "OACT.AcctCode = OFPR.AcctCode", "join_type": "LEFT", "purpose": "Get period balances for this account",      "confidence": 0.80 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "AcctCode",   "business_name": "GL Account Code",            "description": "Unique GL account code — PK and FK target for all JDT1 lines.", "type": "nVarChar", "length": 15, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "AcctName",   "business_name": "Account Name",               "description": "Full name of the GL account.",                                   "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "Finanse",    "business_name": "Is Financial Account",       "description": "Y if this is an income/expense account (vs balance sheet).",      "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Y":"P&L Account","N":"Balance Sheet"} },
+      { "column_number": 4,  "field": "Balance",    "business_name": "Current Account Balance",    "description": "Current balance of this GL account.",                            "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "Debit",      "business_name": "Total Debits",               "description": "Total debits posted to this account.",                           "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "Credit",     "business_name": "Total Credits",              "description": "Total credits posted to this account.",                          "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "ActType",    "business_name": "Account Type",               "description": "Type of GL account.",                                            "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"A":"Assets","L":"Liabilities","E":"Equity","R":"Revenue","C":"Costs"} },
+      { "column_number": 8,  "field": "CurrTotal",  "business_name": "Balance in Foreign Currency","description": "Balance in foreign currency (for multi-currency accounts).",      "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "FatherNum",  "business_name": "Parent Account Code",        "description": "Parent account for hierarchical rollup reporting.",               "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "ExternalCo", "business_name": "External Account Code",      "description": "Account code used in external statutory reporting.",              "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OFPR",
+    "business_name": "Financial Reporting Periods (Period Balances)",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Stores period-end GL account balances and budget vs actual figures. Used for financial period reports — P&L, balance sheet by period.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 25,
+    "primary_key": { "columns": ["AbsEntry"], "confidence": 0.90, "rule": "document_header" },
+    "joins": [
+      { "to_table": "OACT", "to_business_name": "Chart of Accounts", "from_column": "AcctCode", "to_column": "AcctCode", "on_clause": "OFPR.AcctCode = OACT.AcctCode", "join_type": "LEFT", "purpose": "Get account name for period balance reporting", "confidence": 0.92 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "AbsEntry",  "business_name": "Period Balance Internal ID",  "description": "Unique key for each period-account balance row.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "AcctCode",  "business_name": "GL Account Code",             "description": "FK to OACT — account this balance belongs to.", "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": true,  "references": {"table":"OACT","business_name":"Chart of Accounts","column":"AcctCode","confidence":0.92} },
+      { "column_number": 3,  "field": "FiscalYear", "business_name": "Financial Year",             "description": "Financial year this period balance belongs to.", "type": "Int",      "length": 4,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4,  "field": "Month",     "business_name": "Period / Month Number",       "description": "Month number (1–12) of the period.", "type": "Int",      "length": 2,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "Debit",     "business_name": "Period Debit Total",          "description": "Total debits in this period for this account.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "Credit",    "business_name": "Period Credit Total",         "description": "Total credits in this period for this account.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "Balance",   "business_name": "Period Closing Balance",      "description": "Net balance at end of this period.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "Budget",    "business_name": "Period Budget",               "description": "Budgeted amount for this account in this period.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  }
+]

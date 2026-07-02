@@ -67,6 +67,13 @@ class Settings(BaseSettings):
     # via Claude (schema-grounded). When false, falls back to the static SAP B1 pack.
     onboarding_ai_generation: bool = True
 
+    # ── ERPRef prior (SAP B1 warm-start) ─────────────────────────────────────
+    # When true, onboarding annotates the crawled catalog of a detected SAP B1
+    # database with reference business names + the join graph (data/erpref_*),
+    # intersection-filtered so it only ever annotates what was really crawled.
+    erpref_prior_enabled: bool = True
+    erpref_data_dir: str = str(_ROOT / "data")
+
     # ── LangSmith ────────────────────────────────────────────────────────────
     langsmith_api_key: str = ""
     langsmith_project: str = "sap-ai-platform"

@@ -3,7 +3,8 @@ Post-discovery pipeline tests.
 
 Covers:
   - build_post_discovery_pipeline: AI-driven onboarding chain
-    (run_ai_mapping → early embed → generate_ai_collection → embedding join).
+    (apply_erpref_prior → run_ai_mapping → early embed →
+    generate_ai_collection → embedding join).
     Knowledge graph is excluded by default (MVP) and added via flag.
   - MSSQL fingerprinting (SL-011): SAP B1 schemas on MSSQL are detected
     and mapped to the sap_b1 entity pack.
@@ -42,11 +43,14 @@ def _flatten(sig) -> list:
 @pytest.mark.unit
 def test_pipeline_phases() -> None:
     sig = build_post_discovery_pipeline("conn-1", "tenant-1", "mssql")
-    ai_mapping, early_embed, ai_collection, phase_c = sig.tasks
+    erpref_prior, ai_mapping, early_embed, ai_collection, phase_c = sig.tasks
 
-    # AI-driven onboarding: map entities from the REAL crawled schema, an early
+    # AI-driven onboarding: warm-start a SAP B1 catalog with the ERPRef prior
+    # (no-op on non-B1), map entities from the REAL crawled schema, an early
     # embedding pass so chat is usable, then generate catalog-validated KPIs +
     # tools. No hardcoded SAP B1 pack is applied.
+    assert erpref_prior.task == "semantic.apply_erpref_prior"
+    assert erpref_prior.args == ("conn-1", "tenant-1")
     assert ai_mapping.task == "semantic.run_ai_mapping"
     assert ai_mapping.args == ("conn-1", "tenant-1")
     assert early_embed.task == "embedding.embed_entities"

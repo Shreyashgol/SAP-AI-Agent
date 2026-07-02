@@ -98,3 +98,6 @@ class MetadataRelation(UUIDMixin, TimestampMixin, Base):
     confidence: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
     is_admin_confirmed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Inferred edges with confidence < 0.8 require admin confirmation (KG-003)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Plain-English purpose of the join (e.g. from the ERPRef prior), surfaced to
+    # the runtime text-to-SQL prompt so the model picks the right relationship.

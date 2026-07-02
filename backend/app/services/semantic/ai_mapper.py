@@ -125,15 +125,26 @@ class AIEntityMapper:
                 "pk": c.is_primary_key,
                 "fk": c.is_foreign_key,
             }
+            if c.ai_description:
+                entry["business"] = c.ai_description
             if c.sample_values and not c.is_pii_flagged:
                 samples = c.sample_values.get("values", [])[:5]
                 if samples:
                     entry["samples"] = samples
             col_context.append(entry)
 
+        # A reference prior (e.g. SAP B1 ERPRef) may have annotated this table
+        # during onboarding. Pass it as a hint — the real columns above win.
+        hint = ""
+        if table.ai_description:
+            hint = (
+                f"\n\nReference business context (a prior — trust the actual columns "
+                f"above if they differ): {table.ai_description}"
+            )
+
         user_message = (
             f"Table: {table.schema_name}.{table.table_name}\n"
-            f"Columns:\n{json.dumps(col_context, indent=2)}"
+            f"Columns:\n{json.dumps(col_context, indent=2)}{hint}"
         )
 
         result = await self._call_claude(user_message)

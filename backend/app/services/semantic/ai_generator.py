@@ -145,7 +145,10 @@ class AISchemaGenerator:
             ft, tt = tbl_by_id.get(r.from_table_id), tbl_by_id.get(r.to_table_id)
             fc, tc = col_by_id.get(r.from_column_id), col_by_id.get(r.to_column_id)
             if ft and tt and fc and tc:
-                hints.append(f"{ft}.{fc} -> {tt}.{tc}")
+                hint = f"{ft}.{fc} -> {tt}.{tc}"
+                if r.notes:
+                    hint += f"  -- {r.notes}"
+                hints.append(hint)
         return hints
 
     def _build_context(

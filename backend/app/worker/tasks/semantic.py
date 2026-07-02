@@ -1,9 +1,10 @@
 """
 Celery tasks for semantic layer operations.
 
-  semantic.apply_pack       — apply entity pack after discovery
-  semantic.run_ai_mapping   — Claude AI mapping for unmapped tables
-  semantic.seed_kpis        — seed system KPIs for a tenant
+  semantic.apply_pack          — apply entity pack after discovery
+  semantic.apply_erpref_prior  — warm-start a SAP B1 catalog with the ERPRef prior
+  semantic.run_ai_mapping      — Claude AI mapping for unmapped tables
+  semantic.seed_kpis           — seed system KPIs for a tenant
 """
 
 from __future__ import annotations
@@ -34,6 +35,27 @@ def apply_entity_pack(
     import asyncio
     return asyncio.get_event_loop().run_until_complete(
         _run_apply_pack(connection_id, tenant_id, db_type, schema_name)
+    )
+
+
+@celery_app.task(
+    bind=True,
+    name="semantic.apply_erpref_prior",
+    max_retries=2,
+    default_retry_delay=30,
+    queue="default",
+    soft_time_limit=300,
+)
+def apply_erpref_prior(
+    self: Task,
+    connection_id: str,
+    tenant_id: str,
+    schema_name: str | None = None,
+) -> dict:
+    """Warm-start the crawled catalog with the ERPRef prior (SAP B1 only)."""
+    import asyncio
+    return asyncio.get_event_loop().run_until_complete(
+        _run_apply_erpref_prior(connection_id, tenant_id, schema_name)
     )
 
 
@@ -103,6 +125,44 @@ async def _run_apply_pack(
             counts = await loader.apply(schema_name=schema_name)
             await db.commit()
             return {"status": "success", "pack_source": pack_source, "counts": counts}
+    finally:
+        await engine.dispose()
+
+
+async def _run_apply_erpref_prior(
+    connection_id: str, tenant_id: str, schema_name: str | None
+) -> dict:
+    import uuid
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+    from app.core.settings import get_settings
+    from app.services.semantic.erpref_prior import ErpRefPrior
+    from app.services.semantic.mssql_fingerprint import fingerprint_connection
+
+    settings = get_settings()
+    if not settings.erpref_prior_enabled:
+        return {"status": "skipped", "reason": "disabled"}
+
+    engine = create_async_engine(settings.database_url, echo=False)
+    Session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    conn_uuid = uuid.UUID(connection_id)
+    tenant_uuid = uuid.UUID(tenant_id)
+
+    try:
+        async with Session() as db:
+            # Gate: only warm-start a database that actually looks like SAP B1.
+            fp = await fingerprint_connection(db, tenant_uuid, conn_uuid, schema_name)
+            if fp.detected_erp != "sap_b1":
+                log.info("erpref_prior.skip_non_b1",
+                         detected=fp.detected_erp, confidence=round(fp.confidence, 3))
+                return {"status": "skipped", "reason": "not_sap_b1",
+                        "detected": fp.detected_erp}
+
+            counts = await ErpRefPrior(db, tenant_uuid).apply(conn_uuid)
+            await db.commit()
+            log.info("erpref_prior.task.done", confidence=round(fp.confidence, 3), **counts)
+            return {"status": "success", "detected": fp.detected_erp, **counts}
     finally:
         await engine.dispose()
 

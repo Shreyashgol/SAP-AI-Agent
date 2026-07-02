@@ -1,0 +1,280 @@
+[
+  {
+    "table_name": "OITM",
+    "business_name": "Item Master Data (Products / Materials)",
+    "module": "Inventory",
+    "module_id": 3,
+    "description": "Master record for every product, raw material, service, or asset managed in SAP B1. Referenced by virtually every sales, purchasing, and inventory document. Contains pricing, UOM, GL accounts, and warehouse details.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 65,
+    "primary_key": { "columns": ["ItemCode"], "confidence": 0.99, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OITW", "to_business_name": "Item Warehouse Stock",       "from_column": "ItemCode",  "to_column": "ItemCode",  "on_clause": "OITM.ItemCode = OITW.ItemCode",  "join_type": "LEFT", "purpose": "Get current stock levels per warehouse",         "confidence": 0.99 },
+      { "to_table": "OITB", "to_business_name": "Item Group",                 "from_column": "ItmsGrpCod","to_column": "ItmsGrpCod","on_clause": "OITM.ItmsGrpCod = OITB.ItmsGrpCod","join_type": "LEFT","purpose": "Get item category / group name",               "confidence": 0.97 },
+      { "to_table": "OWHS", "to_business_name": "Warehouse",                  "from_column": "DfltWH",    "to_column": "WhsCode",   "on_clause": "OITM.DfltWH = OWHS.WhsCode",    "join_type": "LEFT", "purpose": "Get default warehouse name for this item",       "confidence": 0.90 },
+      { "to_table": "OUOM", "to_business_name": "Unit of Measure",            "from_column": "SalUnitMsr","to_column": "UomCode",   "on_clause": "OITM.SalUnitMsr = OUOM.UomCode","join_type": "LEFT", "purpose": "Get sales unit of measure name",                 "confidence": 0.88 },
+      { "to_table": "OINM", "to_business_name": "Inventory Transactions (Audit Trail)", "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "OITM.ItemCode = OINM.ItemCode", "join_type": "LEFT", "purpose": "Get all stock movements for this item", "confidence": 0.92 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "ItemCode",    "business_name": "Item / Product Code",          "description": "Unique code for the item. PK and FK target across all transaction tables.", "type": "nVarChar", "length": 20, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "ItemName",    "business_name": "Item Description / Product Name","description": "Full name of the item.",                                                   "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "FrgnName",    "business_name": "Foreign / Alternate Name",     "description": "Alternative name or foreign language description.",                         "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4,  "field": "ItmsGrpCod",  "business_name": "Item Group Code",              "description": "Item category / group. FK to OITB.",                                        "type": "Int",      "length": 6,  "is_pk": false, "is_fk": true,  "references": {"table":"OITB","business_name":"Item Group","column":"ItmsGrpCod","confidence":0.97} },
+      { "column_number": 5,  "field": "SalUnitMsr",  "business_name": "Sales Unit of Measure",        "description": "UOM used in sales documents. FK to OUOM.",                                   "type": "nVarChar", "length": 8,  "is_pk": false, "is_fk": true,  "references": {"table":"OUOM","business_name":"Unit of Measure","column":"UomCode","confidence":0.88} },
+      { "column_number": 6,  "field": "PurUnitMsr",  "business_name": "Purchase Unit of Measure",     "description": "UOM used in purchasing documents.",                                          "type": "nVarChar", "length": 8,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "DfltWH",      "business_name": "Default Warehouse",            "description": "Default warehouse for this item. FK to OWHS.",                               "type": "nVarChar", "length": 8,  "is_pk": false, "is_fk": true,  "references": {"table":"OWHS","business_name":"Warehouse","column":"WhsCode","confidence":0.90} },
+      { "column_number": 8,  "field": "OnHand",      "business_name": "Total Stock On Hand",          "description": "Total quantity in stock across all warehouses.",                              "type": "Quantity", "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "IsCommited",  "business_name": "Committed / Reserved Quantity","description": "Quantity allocated to open sales orders or production orders.",               "type": "Quantity", "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "OnOrder",     "business_name": "On Purchase Order Quantity",   "description": "Quantity on open purchase orders — expected inbound.",                        "type": "Quantity", "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 11, "field": "MinLevel",    "business_name": "Minimum Stock Level",          "description": "Reorder point — triggers purchase recommendation when OnHand drops below.", "type": "Quantity", "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 12, "field": "MaxLevel",    "business_name": "Maximum Stock Level",          "description": "Maximum stock to hold — used in replenishment planning.",                   "type": "Quantity", "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 13, "field": "AvgPrice",    "business_name": "Average Cost / Moving Average","description": "Moving average cost price per unit (SAP B1 valuation method).",            "type": "Price",    "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 14, "field": "LastPurPrc",  "business_name": "Last Purchase Price",          "description": "Price at which item was last purchased.",                                    "type": "Price",    "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 15, "field": "LastSalPrc",  "business_name": "Last Sale Price",              "description": "Price at which item was last sold.",                                         "type": "Price",    "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 16, "field": "PrchseItem",  "business_name": "Is Purchased Item",           "description": "Y if this item can be purchased from vendors.",                               "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Y":"Yes","N":"No"} },
+      { "column_number": 17, "field": "SellItem",    "business_name": "Is Sold Item",                "description": "Y if this item can be sold to customers.",                                   "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Y":"Yes","N":"No"} },
+      { "column_number": 18, "field": "InvntItem",   "business_name": "Is Inventory Item",           "description": "Y if stock levels are tracked for this item.",                               "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Y":"Yes","N":"No"} },
+      { "column_number": 19, "field": "ItemType",    "business_name": "Item Type",                   "description": "Classification of the item.",                                                "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"I":"Item","S":"Service","R":"Resource","F":"Fixed Asset","T":"Travel"} },
+      { "column_number": 20, "field": "Canceled",    "business_name": "Item Cancelled / Discontinued","description": "Y if this item has been discontinued.",                                      "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Y":"Discontinued","N":"Active"} }
+    ]
+  },
+  {
+    "table_name": "OITW",
+    "business_name": "Item Warehouse Stock (Inventory Levels per Warehouse)",
+    "module": "Inventory",
+    "module_id": 3,
+    "description": "Stocks levels per item per warehouse. One row for each item-warehouse combination. The primary source for inventory availability reporting.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 20,
+    "primary_key": { "columns": ["ItemCode","WhsCode"], "confidence": 0.97, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OITM", "to_business_name": "Item Master Data", "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "OITW.ItemCode = OITM.ItemCode", "join_type": "LEFT", "purpose": "Get item name, group, UOM, and pricing",              "confidence": 0.99 },
+      { "to_table": "OWHS", "to_business_name": "Warehouse",        "from_column": "WhsCode",  "to_column": "WhsCode",  "on_clause": "OITW.WhsCode = OWHS.WhsCode",   "join_type": "LEFT", "purpose": "Get warehouse name and location for this stock",     "confidence": 0.99 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "ItemCode",   "business_name": "Item / Product Code",        "description": "FK to OITM. Composite PK with WhsCode.", "type": "nVarChar", "length": 20, "is_pk": true,  "is_fk": true,  "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.99} },
+      { "column_number": 2,  "field": "WhsCode",    "business_name": "Warehouse Code",             "description": "FK to OWHS. Composite PK with ItemCode.", "type": "nVarChar", "length": 8,  "is_pk": true,  "is_fk": true,  "references": {"table":"OWHS","business_name":"Warehouse","column":"WhsCode","confidence":0.99} },
+      { "column_number": 3,  "field": "OnHand",     "business_name": "Stock On Hand",             "description": "Current quantity physically in this warehouse.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4,  "field": "IsCommited", "business_name": "Committed Quantity",        "description": "Quantity reserved for open sales orders from this warehouse.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "OnOrder",    "business_name": "On Purchase Order",         "description": "Quantity on open POs expected at this warehouse.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "MinLevel",   "business_name": "Minimum Level",             "description": "Minimum stock to trigger replenishment at this warehouse.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "MaxLevel",   "business_name": "Maximum Level",             "description": "Maximum stock to hold at this warehouse.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "AvgPrice",   "business_name": "Average Cost at Warehouse", "description": "Warehouse-specific moving average cost.", "type": "Price", "length": 0, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OWHS",
+    "business_name": "Warehouse Master Data",
+    "module": "Inventory",
+    "module_id": 3,
+    "description": "Lookup table defining all warehouses. Every stock-related document references a warehouse code here.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 15,
+    "primary_key": { "columns": ["WhsCode"], "confidence": 0.99, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OITW", "to_business_name": "Item Warehouse Stock", "from_column": "WhsCode", "to_column": "WhsCode", "on_clause": "OWHS.WhsCode = OITW.WhsCode", "join_type": "LEFT", "purpose": "Get all items and stock levels at this warehouse", "confidence": 0.99 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "WhsCode",   "business_name": "Warehouse Code",     "description": "Unique code for the warehouse. PK and FK target across all stock tables.", "type": "nVarChar", "length": 8,  "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "WhsName",   "business_name": "Warehouse Name",     "description": "Full name of the warehouse.",                                              "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "Location",  "business_name": "Location / Address", "description": "Physical address or location of the warehouse.",                         "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4, "field": "Inactive",  "business_name": "Is Inactive",        "description": "Y if this warehouse is no longer in use.",                               "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Y":"Inactive","N":"Active"} }
+    ]
+  },
+  {
+    "table_name": "OITB",
+    "business_name": "Item Group / Item Category",
+    "module": "Inventory",
+    "module_id": 3,
+    "description": "Item categories/groups for classifying products (e.g. Raw Materials, Finished Goods, Semi-Finished, Spare Parts). FK target in OITM.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 10,
+    "primary_key": { "columns": ["ItmsGrpCod"], "confidence": 0.99, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OITM", "to_business_name": "Item Master Data", "from_column": "ItmsGrpCod", "to_column": "ItmsGrpCod", "on_clause": "OITB.ItmsGrpCod = OITM.ItmsGrpCod", "join_type": "LEFT", "purpose": "Get all items in this category", "confidence": 0.97 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "ItmsGrpCod",  "business_name": "Item Group Code",  "description": "Unique code for the item group. PK and FK in OITM.", "type": "Int",      "length": 6,  "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "ItmsGrpNam",  "business_name": "Item Group Name",  "description": "Full name of the item group (e.g. Raw Material, Finished Good).", "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OIGN",
+    "business_name": "Goods Receipt (Stock-In / Inventory Receipt)",
+    "module": "Inventory",
+    "module_id": 3,
+    "description": "Records stock received into the warehouse without a purchase document (e.g. opening stock, production output). Not to be confused with GRN (OPDN) which is PO-linked.",
+    "is_master": true, "is_header": true, "is_line": false,
+    "total_columns": 25,
+    "primary_key": { "columns": ["DocEntry"], "confidence": 0.90, "rule": "document_header" },
+    "joins": [
+      { "to_table": "IGN1", "to_business_name": "Goods Receipt Line Items", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "OIGN.DocEntry = IGN1.DocEntry", "join_type": "LEFT", "purpose": "Get items and quantities received into stock", "confidence": 0.99 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",  "business_name": "Goods Receipt Internal ID", "description": "Unique system key. FK target in IGN1.", "type": "Int",  "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "DocNum",    "business_name": "Goods Receipt Number",      "description": "User-facing receipt number.",           "type": "Int",  "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "DocDate",   "business_name": "Receipt Date",              "description": "Date goods were received into stock.",   "type": "Date", "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4, "field": "DocTotal",  "business_name": "Total Value of Receipt",    "description": "Total stock value received.",            "type": "Sum",  "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "Comments",  "business_name": "Remarks",                  "description": "Reason or notes for this stock receipt.", "type": "nVarChar", "length": 254, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "IGN1",
+    "business_name": "Goods Receipt Line Items",
+    "module": "Inventory",
+    "module_id": 3,
+    "description": "Line items for a goods receipt into stock — item, quantity, warehouse, and unit cost.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 12,
+    "primary_key": { "columns": ["DocEntry","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OIGN", "to_business_name": "Goods Receipt Header", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "IGN1.DocEntry = OIGN.DocEntry", "join_type": "LEFT", "purpose": "Get receipt header details", "confidence": 0.99 },
+      { "to_table": "OITM", "to_business_name": "Item Master Data",     "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "IGN1.ItemCode = OITM.ItemCode", "join_type": "LEFT", "purpose": "Get item name and details",   "confidence": 0.95 },
+      { "to_table": "OWHS", "to_business_name": "Warehouse",            "from_column": "WhsCode",  "to_column": "WhsCode",  "on_clause": "IGN1.WhsCode = OWHS.WhsCode",   "join_type": "LEFT", "purpose": "Get receiving warehouse",      "confidence": 0.90 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",   "business_name": "Goods Receipt Internal ID", "description": "FK to OIGN.DocEntry.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"OIGN","business_name":"Goods Receipt","column":"DocEntry","confidence":0.99} },
+      { "column_number": 2, "field": "LineNum",    "business_name": "Line Number",               "description": "Sequential line number.", "type": "Int",  "length": 6,  "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 3, "field": "ItemCode",   "business_name": "Item Code",                 "description": "FK to OITM.", "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": true, "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.95} },
+      { "column_number": 4, "field": "Quantity",   "business_name": "Received Quantity",         "description": "Quantity received.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "Price",      "business_name": "Unit Cost Price",           "description": "Cost price per unit.", "type": "Price",    "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "LineTotal",  "business_name": "Line Total Value",          "description": "Total value of this receipt line.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7, "field": "WhsCode",    "business_name": "Receiving Warehouse",       "description": "FK to OWHS.", "type": "nVarChar", "length": 8, "is_pk": false, "is_fk": true, "references": {"table":"OWHS","business_name":"Warehouse","column":"WhsCode","confidence":0.90} }
+    ]
+  },
+  {
+    "table_name": "OIGE",
+    "business_name": "Goods Issue (Stock-Out / Inventory Issue)",
+    "module": "Inventory",
+    "module_id": 3,
+    "description": "Records stock issued from the warehouse without a sales document (e.g. consumption for production, write-off, scrapping).",
+    "is_master": true, "is_header": true, "is_line": false,
+    "total_columns": 22,
+    "primary_key": { "columns": ["DocEntry"], "confidence": 0.90, "rule": "document_header" },
+    "joins": [
+      { "to_table": "IGE1", "to_business_name": "Goods Issue Line Items", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "OIGE.DocEntry = IGE1.DocEntry", "join_type": "LEFT", "purpose": "Get items issued from stock", "confidence": 0.99 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",  "business_name": "Goods Issue Internal ID", "description": "Unique system key. FK target in IGE1.", "type": "Int",  "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "DocNum",    "business_name": "Goods Issue Number",      "description": "User-facing issue number.", "type": "Int",  "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "DocDate",   "business_name": "Issue Date",              "description": "Date goods were issued from stock.", "type": "Date", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4, "field": "DocTotal",  "business_name": "Total Value Issued",      "description": "Total stock value issued.", "type": "Sum",  "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "Comments",  "business_name": "Remarks / Reason",        "description": "Reason for goods issue (e.g. scrapping, production consumption).", "type": "nVarChar", "length": 254, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "IGE1",
+    "business_name": "Goods Issue Line Items",
+    "module": "Inventory",
+    "module_id": 3,
+    "description": "Line items for a goods issue from stock — item, quantity, warehouse, and cost.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 12,
+    "primary_key": { "columns": ["DocEntry","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OIGE", "to_business_name": "Goods Issue Header", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "IGE1.DocEntry = OIGE.DocEntry", "join_type": "LEFT", "purpose": "Get issue header details", "confidence": 0.99 },
+      { "to_table": "OITM", "to_business_name": "Item Master Data",   "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "IGE1.ItemCode = OITM.ItemCode", "join_type": "LEFT", "purpose": "Get item name",             "confidence": 0.95 },
+      { "to_table": "OWHS", "to_business_name": "Warehouse",          "from_column": "WhsCode",  "to_column": "WhsCode",  "on_clause": "IGE1.WhsCode = OWHS.WhsCode",   "join_type": "LEFT", "purpose": "Get issuing warehouse",     "confidence": 0.90 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",   "business_name": "Goods Issue Internal ID", "description": "FK to OIGE.DocEntry.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"OIGE","business_name":"Goods Issue","column":"DocEntry","confidence":0.99} },
+      { "column_number": 2, "field": "LineNum",    "business_name": "Line Number",             "description": "Sequential line number.", "type": "Int",  "length": 6, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 3, "field": "ItemCode",   "business_name": "Item Code",               "description": "FK to OITM.", "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": true, "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.95} },
+      { "column_number": 4, "field": "Quantity",   "business_name": "Issued Quantity",         "description": "Quantity issued from stock.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "Price",      "business_name": "Unit Cost",               "description": "Cost price per unit at time of issue.", "type": "Price", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "LineTotal",  "business_name": "Line Total Cost",         "description": "Total cost of goods issued on this line.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7, "field": "WhsCode",    "business_name": "Issuing Warehouse",       "description": "FK to OWHS.", "type": "nVarChar", "length": 8, "is_pk": false, "is_fk": true, "references": {"table":"OWHS","business_name":"Warehouse","column":"WhsCode","confidence":0.90} }
+    ]
+  },
+  {
+    "table_name": "OWTR",
+    "business_name": "Inventory Transfer (Stock Transfer between Warehouses)",
+    "module": "Inventory",
+    "module_id": 3,
+    "description": "Records movement of stock between two warehouses within the same company. Creates one goods issue and one goods receipt internally.",
+    "is_master": true, "is_header": true, "is_line": false,
+    "total_columns": 20,
+    "primary_key": { "columns": ["DocEntry"], "confidence": 0.90, "rule": "document_header" },
+    "joins": [
+      { "to_table": "WTR1", "to_business_name": "Inventory Transfer Line Items", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "OWTR.DocEntry = WTR1.DocEntry", "join_type": "LEFT", "purpose": "Get items and quantities transferred", "confidence": 0.99 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",  "business_name": "Transfer Internal ID",   "description": "Unique system key. FK target in WTR1.", "type": "Int",  "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "DocNum",    "business_name": "Transfer Number",        "description": "User-facing transfer number.", "type": "Int",  "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "DocDate",   "business_name": "Transfer Date",          "description": "Date the transfer was made.", "type": "Date", "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4, "field": "FromWhsCod","business_name": "Source Warehouse",       "description": "Warehouse stock is transferred FROM. FK to OWHS.", "type": "nVarChar", "length": 8, "is_pk": false, "is_fk": true, "references": {"table":"OWHS","business_name":"Warehouse","column":"WhsCode","confidence":0.92} },
+      { "column_number": 5, "field": "ToWhsCode", "business_name": "Destination Warehouse", "description": "Warehouse stock is transferred TO. FK to OWHS.", "type": "nVarChar", "length": 8, "is_pk": false, "is_fk": true, "references": {"table":"OWHS","business_name":"Warehouse","column":"WhsCode","confidence":0.92} },
+      { "column_number": 6, "field": "Comments",  "business_name": "Remarks",               "description": "Notes on reason for transfer.", "type": "nVarChar", "length": 254, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "WTR1",
+    "business_name": "Inventory Transfer Line Items",
+    "module": "Inventory",
+    "module_id": 3,
+    "description": "Line items for an inventory transfer — items, quantities, source/destination warehouses.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 12,
+    "primary_key": { "columns": ["DocEntry","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OWTR", "to_business_name": "Inventory Transfer Header", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "WTR1.DocEntry = OWTR.DocEntry", "join_type": "LEFT", "purpose": "Get transfer header and warehouse details", "confidence": 0.99 },
+      { "to_table": "OITM", "to_business_name": "Item Master Data",          "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "WTR1.ItemCode = OITM.ItemCode", "join_type": "LEFT", "purpose": "Get item name",                          "confidence": 0.95 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",  "business_name": "Transfer Internal ID", "description": "FK to OWTR.DocEntry.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"OWTR","business_name":"Inventory Transfer","column":"DocEntry","confidence":0.99} },
+      { "column_number": 2, "field": "LineNum",   "business_name": "Line Number",          "description": "Sequential line number.", "type": "Int", "length": 6, "is_pk": true, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "ItemCode",  "business_name": "Item Code",            "description": "FK to OITM.", "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": true, "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.95} },
+      { "column_number": 4, "field": "Quantity",  "business_name": "Transferred Quantity", "description": "Quantity moved between warehouses.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "Price",     "business_name": "Unit Cost",            "description": "Cost price at time of transfer.", "type": "Price", "length": 0, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OINM",
+    "business_name": "Inventory Transaction Audit Trail (Stock Ledger)",
+    "module": "Inventory",
+    "module_id": 3,
+    "description": "Complete audit log of every inventory movement — goods receipt, goods issue, sales delivery, GRN, transfer, production. The definitive source for stock history and FIFO/LIFO layer analysis.",
+    "is_master": false, "is_header": false, "is_line": false,
+    "total_columns": 25,
+    "primary_key": { "columns": ["ItemCode","TransType","DocEntry","DocLine"], "confidence": 0.90, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OITM", "to_business_name": "Item Master Data", "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "OINM.ItemCode = OITM.ItemCode", "join_type": "LEFT", "purpose": "Get item name and group",                 "confidence": 0.99 },
+      { "to_table": "OWHS", "to_business_name": "Warehouse",        "from_column": "Warehouse", "to_column": "WhsCode", "on_clause": "OINM.Warehouse = OWHS.WhsCode", "join_type": "LEFT", "purpose": "Get warehouse where movement occurred", "confidence": 0.95 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "ItemCode",    "business_name": "Item Code",                   "description": "Item for which stock moved. FK to OITM.", "type": "nVarChar", "length": 20, "is_pk": true,  "is_fk": true,  "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.99} },
+      { "column_number": 2,  "field": "TransType",   "business_name": "Transaction Type Code",       "description": "Type of inventory movement (e.g. 13=AR Invoice, 18=AP Invoice, 20=GRN).", "type": "Int", "length": 6, "is_pk": true, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "DocEntry",    "business_name": "Source Document Internal ID", "description": "DocEntry of the originating document.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 4,  "field": "DocLine",     "business_name": "Source Document Line",        "description": "Line number on the originating document.", "type": "Int",    "length": 6,  "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "DocDate",     "business_name": "Transaction Date",            "description": "Date the stock movement occurred.", "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "Warehouse",   "business_name": "Warehouse",                   "description": "Warehouse where stock moved. FK to OWHS.", "type": "nVarChar", "length": 8, "is_pk": false, "is_fk": true, "references": {"table":"OWHS","business_name":"Warehouse","column":"WhsCode","confidence":0.95} },
+      { "column_number": 7,  "field": "InQty",       "business_name": "Quantity In (Received)",      "description": "Quantity added to stock.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "OutQty",      "business_name": "Quantity Out (Issued)",       "description": "Quantity removed from stock.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "OpenQty",     "business_name": "Closing Stock Balance",       "description": "Running balance after this movement.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "Price",       "business_name": "Cost Price at Transaction",   "description": "Unit cost at the time of the stock movement.", "type": "Price", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 11, "field": "TransValue",  "business_name": "Transaction Value",           "description": "Total value of this stock movement (Qty × Price).", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OBTN",
+    "business_name": "Batch / Lot Master Data",
+    "module": "Inventory",
+    "module_id": 3,
+    "description": "Master records for batch-tracked inventory — lot numbers, expiry dates, and status. Used in food, pharma, and manufacturing to track item batches through the supply chain.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 20,
+    "primary_key": { "columns": ["ItemCode","BatchNum"], "confidence": 0.97, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OITM", "to_business_name": "Item Master Data", "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "OBTN.ItemCode = OITM.ItemCode", "join_type": "LEFT", "purpose": "Get item details for this batch", "confidence": 0.99 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "ItemCode",    "business_name": "Item Code",           "description": "FK to OITM. Composite PK with BatchNum.", "type": "nVarChar", "length": 20, "is_pk": true,  "is_fk": true,  "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.99} },
+      { "column_number": 2,  "field": "BatchNum",    "business_name": "Batch / Lot Number",  "description": "Batch or lot number. Composite PK with ItemCode.", "type": "nVarChar", "length": 17, "is_pk": true, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "WhsCode",     "business_name": "Warehouse Code",      "description": "Warehouse where this batch is stored.", "type": "nVarChar", "length": 8, "is_pk": false, "is_fk": true, "references": {"table":"OWHS","business_name":"Warehouse","column":"WhsCode","confidence":0.90} },
+      { "column_number": 4,  "field": "Quantity",    "business_name": "Batch Quantity",      "description": "Current on-hand quantity for this batch.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "MnfDate",     "business_name": "Manufacturing Date",  "description": "Date this batch was manufactured.", "type": "Date", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "ExpDate",     "business_name": "Expiry Date",         "description": "Date this batch expires — critical for FEFO management.", "type": "Date", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "Status",      "business_name": "Batch Status",        "description": "Quality status of the batch.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"R":"Released","Q":"Quality Hold","N":"Not Accessible"} }
+    ]
+  }
+]

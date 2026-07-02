@@ -70,7 +70,7 @@ def build_post_discovery_pipeline(
     from celery import chain, group
 
     from app.worker.tasks.embedding import embed_entities, embed_tools
-    from app.worker.tasks.semantic import run_ai_mapping
+    from app.worker.tasks.semantic import apply_erpref_prior, run_ai_mapping
     from app.worker.tasks.tools import generate_ai_collection
 
     # AI-driven onboarding is the only path. Claude builds the entire semantic
@@ -79,7 +79,14 @@ def build_post_discovery_pipeline(
     # SQL against the crawled catalog. The legacy hardcoded SAP B1 tool pack has
     # been removed — it assumed tables/columns (OPCH, OITB, …) that don't exist
     # in every dataset and caused "Invalid object name" failures at query time.
+    #
+    # apply_erpref_prior runs first: on a database that fingerprints as SAP B1 it
+    # annotates the crawled catalog with reference business names and the join
+    # graph (data/erpref_*) so run_ai_mapping and generate_ai_collection don't
+    # reason cold. It's intersection-filtered (annotates only what was crawled)
+    # and a no-op on non-B1 databases.
     pipeline = chain(
+        apply_erpref_prior.si(connection_id, tenant_id),
         run_ai_mapping.si(connection_id, tenant_id),
         embed_entities.si(tenant_id),
         generate_ai_collection.si(connection_id, tenant_id),

@@ -602,6 +602,38 @@ export default function ChatPage() {
   const qc = useQueryClient();
   const { data: conversations } = useConversations();
   const { data: turns } = useConversationTurns(activeId);
+
+  // The stream's final payload already carries the complete answer. Seed it
+  // straight into the turns cache so it renders immediately, instead of waiting
+  // on a second `GET /turns` round-trip after invalidation.
+  function seedFinalTurn(convId: string, data: AskResponse) {
+    if (data?.turn_id) setAnimateTurnId(data.turn_id);
+    qc.setQueryData<ConversationTurn[]>(
+      ["conversations", convId, "turns"],
+      (old) => {
+        const prev = old ?? [];
+        if (prev.some((t) => t.id === data.turn_id)) return prev;
+        const seeded: ConversationTurn = {
+          id: data.turn_id,
+          conversation_id: data.conversation_id,
+          turn_number: (prev[prev.length - 1]?.turn_number ?? 0) + 1,
+          question: data.question,
+          answer_text: data.answer_text,
+          answer_data: data.answer_data,
+          sql_query: data.sql_query,
+          chart_hint: data.chart_hint,
+          follow_up_questions: data.follow_up_questions,
+          lineage: data.lineage,
+          confidence_score: data.confidence_score,
+          execution_time_ms: data.execution_time_ms,
+          agents_invoked: data.agents_invoked,
+          intent: data.intent,
+          created_at: new Date().toISOString(),
+        };
+        return [...prev, seeded];
+      },
+    );
+  }
   const createConv = useCreateConversation();
   const deleteConv = useDeleteConversation();
   const ask = useAsk(activeId);
@@ -648,12 +680,11 @@ export default function ChatPage() {
     setPendingQuestion(q);
     setLiveSteps([]);
     try {
-      // Stream the agent's reasoning live, then refetch so the saved turn renders.
+      // Stream the agent's reasoning live; the final payload renders the answer
+      // immediately (see seedFinalTurn), then we reconcile with the server.
       await askStream(activeId, q, connectionId, {
         onStep: (s) => setLiveSteps((prev) => [...prev, s]),
-        onFinal: (data) => {
-          if (data?.turn_id) setAnimateTurnId(data.turn_id);
-        },
+        onFinal: (data) => seedFinalTurn(activeId, data),
       }, controller.signal);
       qc.invalidateQueries({ queryKey: ["conversations", activeId, "turns"] });
       qc.invalidateQueries({ queryKey: ["conversations"] });
@@ -701,9 +732,7 @@ export default function ChatPage() {
       // 3. Stream the new question
       await askStream(activeId, editedQuestion, connectionId, {
         onStep: (s) => setLiveSteps((prev) => [...prev, s]),
-        onFinal: (data) => {
-          if (data?.turn_id) setAnimateTurnId(data.turn_id);
-        },
+        onFinal: (data) => seedFinalTurn(activeId, data),
       }, controller.signal);
       qc.invalidateQueries({ queryKey: ["conversations", activeId, "turns"] });
       qc.invalidateQueries({ queryKey: ["conversations"] });

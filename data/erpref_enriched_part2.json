@@ -1,0 +1,336 @@
+[
+  {
+    "table_name": "OPCH",
+    "business_name": "Purchase Invoice (A/P Invoice)",
+    "module": "Purchasing",
+    "module_id": 4,
+    "description": "Header for all vendor/supplier invoices. Each row is one A/P invoice. Line items stored in PCH1. Creates a payable liability in the GL.",
+    "is_master": true,
+    "is_header": true,
+    "is_line": false,
+    "total_columns": 50,
+    "primary_key": { "columns": ["DocEntry"], "confidence": 0.90, "rule": "document_header" },
+    "joins": [
+      { "to_table": "PCH1", "to_business_name": "Purchase Invoice Line Items",     "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "OPCH.DocEntry = PCH1.DocEntry", "join_type": "LEFT", "purpose": "Get all line items — products received, quantities, costs",              "confidence": 0.99 },
+      { "to_table": "OCRD", "to_business_name": "Business Partner (Vendor)",       "from_column": "CardCode", "to_column": "CardCode", "on_clause": "OPCH.CardCode = OCRD.CardCode",  "join_type": "LEFT", "purpose": "Get vendor name, payment terms, bank details",                        "confidence": 0.95 },
+      { "to_table": "PCH3", "to_business_name": "Purchase Invoice WHT / TDS Lines","from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "OPCH.DocEntry = PCH3.DocEntry", "join_type": "LEFT", "purpose": "Get TDS deducted on this vendor invoice",                             "confidence": 0.99 },
+      { "to_table": "PCH2", "to_business_name": "Purchase Invoice Freight Lines",  "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "OPCH.DocEntry = PCH2.DocEntry", "join_type": "LEFT", "purpose": "Get freight and additional charges on this purchase invoice",         "confidence": 0.99 },
+      { "to_table": "OJDT", "to_business_name": "Journal Entry",                   "from_column": "TransId",  "to_column": "TransId",  "on_clause": "OPCH.TransId = OJDT.TransId",   "join_type": "LEFT", "purpose": "Get GL posting created when invoice was posted",                     "confidence": 0.90 },
+      { "to_table": "OSLP", "to_business_name": "Sales Employee",                  "from_column": "SlpCode",  "to_column": "SlpCode",  "on_clause": "OPCH.SlpCode = OSLP.SlpCode",   "join_type": "LEFT", "purpose": "Get buyer / purchase officer responsible for this invoice",          "confidence": 0.88 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "DocEntry",    "business_name": "Internal Invoice ID (System Key)",       "description": "Unique system-generated key. FK target in PCH1, PCH2, PCH3.",    "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "DocNum",      "business_name": "Vendor Invoice Number (User-Facing)",    "description": "Sequential user-facing purchase invoice number.",                 "type": "Int",      "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "DocType",     "business_name": "Document Type",                          "description": "I=Item-based, S=Service-based purchase invoice.",                "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"I":"Item Invoice","S":"Service Invoice"} },
+      { "column_number": 4,  "field": "DocStatus",   "business_name": "Invoice Status",                         "description": "Current status of the purchase invoice.",                       "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"O":"Open","C":"Closed","D":"Draft"} },
+      { "column_number": 5,  "field": "Cancelled",   "business_name": "Cancelled Flag",                         "description": "Y if this invoice has been cancelled.",                          "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Y":"Cancelled","N":"Active"} },
+      { "column_number": 6,  "field": "CardCode",    "business_name": "Vendor Code",                            "description": "Supplier/vendor account code. FK to OCRD.",                     "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": true,  "references": {"table":"OCRD","business_name":"Business Partner (Vendor)","column":"CardCode","confidence":0.95} },
+      { "column_number": 7,  "field": "CardName",    "business_name": "Vendor Name",                            "description": "Vendor name copied from OCRD at posting time.",                  "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "DocDate",     "business_name": "Invoice Date",                           "description": "Date the vendor invoice was entered.",                          "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "DocDueDate",  "business_name": "Payment Due Date",                       "description": "Date payment is due to the vendor.",                            "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "TaxDate",     "business_name": "Tax / GST Date",                         "description": "Date used for GST input credit reporting.",                     "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 11, "field": "NumAtCard",   "business_name": "Vendor's Invoice Reference Number",      "description": "Vendor's own invoice number (for reconciliation).",               "type": "nVarChar", "length": 26, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 12, "field": "DocTotal",    "business_name": "Invoice Total (Including Tax)",          "description": "Total payable amount including GST.",                           "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 13, "field": "DocTotalFc",  "business_name": "Invoice Total in Foreign Currency",      "description": "Total in vendor's foreign currency if applicable.",              "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 14, "field": "VatSum",      "business_name": "GST / Input Tax Amount",                 "description": "Total GST input credit on this purchase invoice.",               "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 15, "field": "DiscSum",     "business_name": "Discount Amount",                        "description": "Total discount received from vendor.",                          "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 16, "field": "PaidToDate",  "business_name": "Amount Paid to Vendor",                  "description": "Total amount paid against this invoice so far.",                 "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 17, "field": "OpenSum",     "business_name": "Outstanding Payable Amount",             "description": "Remaining unpaid balance. Drives AP aging reports.",            "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 18, "field": "DocCur",      "business_name": "Invoice Currency",                       "description": "Currency in which vendor invoiced.",                            "type": "nVarChar", "length": 3,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 19, "field": "DocRate",     "business_name": "Exchange Rate",                          "description": "Rate between invoice currency and system currency.",            "type": "Rate",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 20, "field": "SlpCode",     "business_name": "Buyer / Purchase Officer Code",          "description": "FK to OSLP — person who raised/approved the invoice.",         "type": "Int",      "length": 6,  "is_pk": false, "is_fk": true,  "references": {"table":"OSLP","business_name":"Sales Employee","column":"SlpCode","confidence":0.88} },
+      { "column_number": 21, "field": "PrjCode",     "business_name": "Project Code",                           "description": "Project this purchase is linked to. FK to OPRJ.",             "type": "nVarChar", "length": 8,  "is_pk": false, "is_fk": true,  "references": {"table":"OPRJ","business_name":"Project","column":"PrjCode","confidence":0.85} },
+      { "column_number": 22, "field": "OcrCode",     "business_name": "Cost Centre",                            "description": "Distribution rule / cost centre. FK to OOCR.",               "type": "nVarChar", "length": 8,  "is_pk": false, "is_fk": true,  "references": {"table":"OOCR","business_name":"Distribution Rule","column":"OcrCode","confidence":0.78} },
+      { "column_number": 23, "field": "TransId",     "business_name": "Journal Entry ID",                       "description": "Linked journal entry in OJDT. FK to OJDT.TransId.",          "type": "Int",      "length": 11, "is_pk": false, "is_fk": true,  "references": {"table":"OJDT","business_name":"Journal Entry","column":"TransId","confidence":0.90} },
+      { "column_number": 24, "field": "PymntGroup",  "business_name": "Payment Terms",                          "description": "Vendor payment terms group.",                                "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 25, "field": "Comments",    "business_name": "Remarks",                                "description": "Free-text remarks on this purchase invoice.",                 "type": "nVarChar", "length": 254,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 26, "field": "CreateDate",  "business_name": "Created Date",                           "description": "Date this record was created in the system.",               "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 27, "field": "UpdateDate",  "business_name": "Last Updated Date",                      "description": "Date this record was last modified.",                       "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "PCH1",
+    "business_name": "Purchase Invoice Line Items",
+    "module": "Purchasing",
+    "module_id": 4,
+    "description": "Each row is one product or service line on a purchase invoice. FK to OPCH via DocEntry.",
+    "is_master": false,
+    "is_header": false,
+    "is_line": true,
+    "total_columns": 28,
+    "primary_key": { "columns": ["DocEntry","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OPCH", "to_business_name": "Purchase Invoice Header", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "PCH1.DocEntry = OPCH.DocEntry", "join_type": "LEFT", "purpose": "Get invoice header — vendor, date, totals",         "confidence": 0.99 },
+      { "to_table": "OITM", "to_business_name": "Item Master Data",        "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "PCH1.ItemCode = OITM.ItemCode", "join_type": "LEFT", "purpose": "Get item name, group, unit of measure",            "confidence": 0.95 },
+      { "to_table": "OWHS", "to_business_name": "Warehouse",               "from_column": "WhsCode",  "to_column": "WhsCode",  "on_clause": "PCH1.WhsCode = OWHS.WhsCode",   "join_type": "LEFT", "purpose": "Get warehouse where goods were received",           "confidence": 0.90 },
+      { "to_table": "OACT", "to_business_name": "GL Account (Chart of Accounts)", "from_column": "AcctCode", "to_column": "AcctCode", "on_clause": "PCH1.AcctCode = OACT.AcctCode", "join_type": "LEFT", "purpose": "Get expense GL account for service lines",   "confidence": 0.90 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "DocEntry",   "business_name": "Purchase Invoice Internal ID", "description": "FK to OPCH.DocEntry.",                                          "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"OPCH","business_name":"Purchase Invoice","column":"DocEntry","confidence":0.99} },
+      { "column_number": 2,  "field": "LineNum",    "business_name": "Line Number",                  "description": "Sequential line number within the invoice.",                     "type": "Int",      "length": 6,  "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "ItemCode",   "business_name": "Item / Product Code",          "description": "Item purchased on this line. FK to OITM.",                       "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": true,  "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.95} },
+      { "column_number": 4,  "field": "Dscription", "business_name": "Item Description",             "description": "Description of item/service purchased.",                          "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "Quantity",   "business_name": "Purchased Quantity",           "description": "Quantity purchased on this line.",                               "type": "Quantity", "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "Price",      "business_name": "Unit Cost Price",              "description": "Purchase cost per unit (before tax).",                           "type": "Price",    "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "DiscPrcnt",  "business_name": "Discount Percentage",          "description": "Line-level discount from vendor.",                               "type": "Rate",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "LineTotal",  "business_name": "Line Total Cost (Before Tax)", "description": "Quantity × Price after discount, before GST.",                   "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "VatGroup",   "business_name": "GST / Tax Code",               "description": "Input GST tax code for this line.",                              "type": "nVarChar", "length": 8,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "VatSum",     "business_name": "Input GST Amount on Line",     "description": "GST input tax amount on this purchase line.",                    "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 11, "field": "WhsCode",    "business_name": "Receiving Warehouse",          "description": "Warehouse where goods were received. FK to OWHS.",               "type": "nVarChar", "length": 8,  "is_pk": false, "is_fk": true,  "references": {"table":"OWHS","business_name":"Warehouse","column":"WhsCode","confidence":0.90} },
+      { "column_number": 12, "field": "AcctCode",   "business_name": "Expense GL Account",           "description": "GL account for service/expense items. FK to OACT.",             "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": true,  "references": {"table":"OACT","business_name":"Chart of Accounts","column":"AcctCode","confidence":0.90} },
+      { "column_number": 13, "field": "BaseType",   "business_name": "Base Document Type",           "description": "Type of originating document (e.g. 20=GRN, 22=Purchase Order).", "type": "Int",      "length": 6,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 14, "field": "BaseEntry",  "business_name": "Base Document Internal ID",    "description": "DocEntry of the source GRN or purchase order.",                  "type": "Int",      "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 15, "field": "BaseLine",   "business_name": "Base Document Line Number",    "description": "Line number in the originating document.",                       "type": "Int",      "length": 6,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 16, "field": "LineStatus", "business_name": "Line Status",                  "description": "Status of this purchase line.",                                 "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"O":"Open","C":"Closed"} }
+    ]
+  },
+  {
+    "table_name": "PCH2",
+    "business_name": "Purchase Invoice Freight / Additional Charges",
+    "module": "Purchasing",
+    "module_id": 4,
+    "description": "Freight, handling, and other additional charges applied to a purchase invoice.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 8,
+    "primary_key": { "columns": ["DocEntry","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OPCH", "to_business_name": "Purchase Invoice", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "PCH2.DocEntry = OPCH.DocEntry", "join_type": "LEFT", "purpose": "Link freight charge to its parent purchase invoice", "confidence": 0.99 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",  "business_name": "Purchase Invoice Internal ID", "description": "FK to OPCH.DocEntry.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"OPCH","business_name":"Purchase Invoice","column":"DocEntry","confidence":0.99} },
+      { "column_number": 2, "field": "LineNum",   "business_name": "Charge Line Number",           "description": "Sequential line number for this charge.", "type": "Int", "length": 6, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 3, "field": "ExpnsCode", "business_name": "Expense / Charge Code",        "description": "Type of additional charge (freight, insurance etc.).", "type": "Int", "length": 6, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4, "field": "LineTotal", "business_name": "Charge Amount",                "description": "Amount of this additional charge.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "VatGroup",  "business_name": "Tax Group on Charge",          "description": "GST applied to this charge.", "type": "nVarChar", "length": 8, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "PCH3",
+    "business_name": "Purchase Invoice Withholding Tax (TDS) Lines",
+    "module": "Purchasing",
+    "module_id": 4,
+    "description": "TDS / withholding tax lines deducted on each purchase invoice (applicable in India).",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 8,
+    "primary_key": { "columns": ["DocEntry","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OPCH", "to_business_name": "Purchase Invoice", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "PCH3.DocEntry = OPCH.DocEntry", "join_type": "LEFT", "purpose": "Link TDS line to its parent purchase invoice", "confidence": 0.99 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",   "business_name": "Purchase Invoice Internal ID", "description": "FK to OPCH.DocEntry.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"OPCH","business_name":"Purchase Invoice","column":"DocEntry","confidence":0.99} },
+      { "column_number": 2, "field": "LineNum",    "business_name": "TDS Line Number",               "description": "Sequential line number.", "type": "Int", "length": 6, "is_pk": true, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "WTCode",     "business_name": "TDS / WHT Code",                "description": "Withholding tax code applied (e.g. TDS-194C, TDS-194J).", "type": "nVarChar", "length": 8, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4, "field": "WTAmnt",     "business_name": "TDS Amount Deducted",           "description": "Amount of TDS to deduct from vendor payment.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "TaxbleAmnt", "business_name": "Taxable Base Amount",           "description": "Amount on which TDS is calculated.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "Rate",       "business_name": "TDS Rate (%)",                  "description": "TDS percentage rate applied.", "type": "Rate", "length": 0, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OPDN",
+    "business_name": "Goods Receipt PO (GRN - Goods Receipt Note)",
+    "module": "Purchasing",
+    "module_id": 4,
+    "description": "Records physical receipt of goods from vendor against a purchase order. Known as GRN in India. Updates stock levels.",
+    "is_master": true,
+    "is_header": true,
+    "is_line": false,
+    "total_columns": 45,
+    "primary_key": { "columns": ["DocEntry"], "confidence": 0.90, "rule": "document_header" },
+    "joins": [
+      { "to_table": "PDN1", "to_business_name": "GRN Line Items",              "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "OPDN.DocEntry = PDN1.DocEntry", "join_type": "LEFT", "purpose": "Get items received, quantities, receiving warehouse per line",  "confidence": 0.99 },
+      { "to_table": "OCRD", "to_business_name": "Business Partner (Vendor)",   "from_column": "CardCode", "to_column": "CardCode", "on_clause": "OPDN.CardCode = OCRD.CardCode",  "join_type": "LEFT", "purpose": "Get vendor name and contact for this GRN",                   "confidence": 0.95 },
+      { "to_table": "OSLP", "to_business_name": "Sales Employee / Buyer",      "from_column": "SlpCode",  "to_column": "SlpCode",  "on_clause": "OPDN.SlpCode = OSLP.SlpCode",   "join_type": "LEFT", "purpose": "Get buyer who received these goods",                         "confidence": 0.88 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "DocEntry",   "business_name": "GRN Internal ID",            "description": "Unique system key. FK target in PDN1.",                   "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "DocNum",     "business_name": "GRN Number",                 "description": "User-facing goods receipt note number.",                   "type": "Int",      "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "DocStatus",  "business_name": "GRN Status",                 "description": "Status of this goods receipt.",                           "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"O":"Open","C":"Closed"} },
+      { "column_number": 4,  "field": "CardCode",   "business_name": "Vendor Code",                "description": "Supplier who delivered goods. FK to OCRD.",               "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": true,  "references": {"table":"OCRD","business_name":"Business Partner (Vendor)","column":"CardCode","confidence":0.95} },
+      { "column_number": 5,  "field": "CardName",   "business_name": "Vendor Name",                "description": "Vendor name at time of GRN creation.",                    "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "DocDate",    "business_name": "GRN / Receipt Date",         "description": "Date goods were physically received.",                    "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "NumAtCard",  "business_name": "Vendor Delivery Challan No.","description": "Vendor's delivery challan or LR number.",                 "type": "nVarChar", "length": 26, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "DocTotal",   "business_name": "GRN Total Value",            "description": "Total value of goods received.",                          "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "VatSum",     "business_name": "Input GST on GRN",           "description": "Total GST input credit on this goods receipt.",            "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "SlpCode",    "business_name": "Buyer Code",                 "description": "FK to OSLP.",                                             "type": "Int",      "length": 6,  "is_pk": false, "is_fk": true,  "references": {"table":"OSLP","business_name":"Sales Employee","column":"SlpCode","confidence":0.88} },
+      { "column_number": 11, "field": "Comments",   "business_name": "Remarks",                    "description": "Free-text remarks on this GRN.",                          "type": "nVarChar", "length": 254,"is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "PDN1",
+    "business_name": "Goods Receipt PO Line Items (GRN Lines)",
+    "module": "Purchasing",
+    "module_id": 4,
+    "description": "Each row is one item received on a GRN. Updates OITW stock on hand for the receiving warehouse.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 25,
+    "primary_key": { "columns": ["DocEntry","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OPDN", "to_business_name": "Goods Receipt PO Header", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "PDN1.DocEntry = OPDN.DocEntry", "join_type": "LEFT", "purpose": "Get GRN header — vendor, receipt date, GRN number",    "confidence": 0.99 },
+      { "to_table": "OITM", "to_business_name": "Item Master Data",        "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "PDN1.ItemCode = OITM.ItemCode", "join_type": "LEFT", "purpose": "Get item name, group, unit of measure",               "confidence": 0.95 },
+      { "to_table": "OWHS", "to_business_name": "Warehouse",               "from_column": "WhsCode",  "to_column": "WhsCode",  "on_clause": "PDN1.WhsCode = OWHS.WhsCode",   "join_type": "LEFT", "purpose": "Get warehouse where goods were received into stock",   "confidence": 0.90 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",   "business_name": "GRN Internal ID",        "description": "FK to OPDN.DocEntry.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"OPDN","business_name":"Goods Receipt PO","column":"DocEntry","confidence":0.99} },
+      { "column_number": 2, "field": "LineNum",    "business_name": "Line Number",             "description": "Sequential line number.", "type": "Int", "length": 6, "is_pk": true, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "ItemCode",   "business_name": "Item / Product Code",    "description": "Item received. FK to OITM.", "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": true, "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.95} },
+      { "column_number": 4, "field": "Dscription", "business_name": "Item Description",       "description": "Description of goods received.", "type": "nVarChar", "length": 100, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "Quantity",   "business_name": "Received Quantity",      "description": "Quantity physically received from vendor.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "Price",      "business_name": "Unit Purchase Price",    "description": "Cost price per unit received.", "type": "Price", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7, "field": "LineTotal",  "business_name": "Line Total Cost",        "description": "Total cost of goods on this line.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8, "field": "WhsCode",    "business_name": "Receiving Warehouse",    "description": "Warehouse stock was received into. FK to OWHS.", "type": "nVarChar", "length": 8, "is_pk": false, "is_fk": true, "references": {"table":"OWHS","business_name":"Warehouse","column":"WhsCode","confidence":0.90} },
+      { "column_number": 9, "field": "BaseType",   "business_name": "Source Document Type",   "description": "Type of source PO (e.g. 22=Purchase Order).", "type": "Int", "length": 6, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10,"field": "BaseEntry",  "business_name": "Source PO Internal ID",  "description": "DocEntry of the originating purchase order.", "type": "Int", "length": 11, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OPOR",
+    "business_name": "Purchase Order",
+    "module": "Purchasing",
+    "module_id": 4,
+    "description": "Purchase order raised to a vendor. Commits the company to buy specified goods/services. Precedes GRN in procurement chain.",
+    "is_master": true, "is_header": true, "is_line": false,
+    "total_columns": 42,
+    "primary_key": { "columns": ["DocEntry"], "confidence": 0.90, "rule": "document_header" },
+    "joins": [
+      { "to_table": "POR1", "to_business_name": "Purchase Order Line Items",   "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "OPOR.DocEntry = POR1.DocEntry", "join_type": "LEFT", "purpose": "Get ordered items, quantities, expected prices",  "confidence": 0.99 },
+      { "to_table": "OCRD", "to_business_name": "Business Partner (Vendor)",   "from_column": "CardCode", "to_column": "CardCode", "on_clause": "OPOR.CardCode = OCRD.CardCode",  "join_type": "LEFT", "purpose": "Get vendor name, payment terms, contact",        "confidence": 0.95 },
+      { "to_table": "OSLP", "to_business_name": "Sales Employee / Buyer",      "from_column": "SlpCode",  "to_column": "SlpCode",  "on_clause": "OPOR.SlpCode = OSLP.SlpCode",   "join_type": "LEFT", "purpose": "Get buyer who raised this purchase order",       "confidence": 0.88 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "DocEntry",   "business_name": "PO Internal ID",              "description": "Unique system key. FK target in POR1.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "DocNum",     "business_name": "Purchase Order Number",        "description": "User-facing PO number.", "type": "Int",      "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "DocStatus",  "business_name": "PO Status",                    "description": "Status of the purchase order.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"O":"Open","C":"Closed"} },
+      { "column_number": 4,  "field": "CardCode",   "business_name": "Vendor Code",                  "description": "FK to OCRD.", "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": true, "references": {"table":"OCRD","business_name":"Business Partner (Vendor)","column":"CardCode","confidence":0.95} },
+      { "column_number": 5,  "field": "CardName",   "business_name": "Vendor Name",                  "description": "Vendor name for this PO.", "type": "nVarChar", "length": 100, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "DocDate",    "business_name": "PO Date",                      "description": "Date purchase order was raised.", "type": "Date", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "DocDueDate", "business_name": "Expected Delivery Date",        "description": "Date vendor should deliver goods.", "type": "Date", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "DocTotal",   "business_name": "PO Total Value",               "description": "Total value of this purchase order.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "OpenSum",    "business_name": "Open / Pending PO Value",      "description": "Value of items not yet received or invoiced.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "SlpCode",    "business_name": "Buyer Code",                   "description": "FK to OSLP.", "type": "Int", "length": 6, "is_pk": false, "is_fk": true, "references": {"table":"OSLP","business_name":"Sales Employee","column":"SlpCode","confidence":0.88} },
+      { "column_number": 11, "field": "Comments",   "business_name": "Remarks",                      "description": "Free-text remarks on this PO.", "type": "nVarChar", "length": 254, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "POR1",
+    "business_name": "Purchase Order Line Items",
+    "module": "Purchasing",
+    "module_id": 4,
+    "description": "Each row is one product line on a purchase order. Tracks ordered qty, received qty, invoiced qty.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 25,
+    "primary_key": { "columns": ["DocEntry","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OPOR", "to_business_name": "Purchase Order Header", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "POR1.DocEntry = OPOR.DocEntry", "join_type": "LEFT", "purpose": "Get PO header — vendor, date, PO number",      "confidence": 0.99 },
+      { "to_table": "OITM", "to_business_name": "Item Master Data",      "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "POR1.ItemCode = OITM.ItemCode", "join_type": "LEFT", "purpose": "Get item name, group, unit of measure",        "confidence": 0.95 },
+      { "to_table": "OWHS", "to_business_name": "Warehouse",             "from_column": "WhsCode",  "to_column": "WhsCode",  "on_clause": "POR1.WhsCode = OWHS.WhsCode",   "join_type": "LEFT", "purpose": "Get destination warehouse for ordered items",  "confidence": 0.90 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "DocEntry",   "business_name": "PO Internal ID",         "description": "FK to OPOR.DocEntry.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"OPOR","business_name":"Purchase Order","column":"DocEntry","confidence":0.99} },
+      { "column_number": 2,  "field": "LineNum",    "business_name": "Line Number",             "description": "Sequential line number.", "type": "Int", "length": 6, "is_pk": true, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "ItemCode",   "business_name": "Item / Product Code",    "description": "Item to be procured. FK to OITM.", "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": true, "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.95} },
+      { "column_number": 4,  "field": "Dscription", "business_name": "Item Description",       "description": "Description of item to be purchased.", "type": "nVarChar", "length": 100, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "Quantity",   "business_name": "Ordered Quantity",       "description": "Quantity ordered from vendor.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "OpenQty",    "business_name": "Open (Pending) Quantity","description": "Quantity not yet received from vendor.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "Price",      "business_name": "Agreed Purchase Price",  "description": "Agreed cost price per unit.", "type": "Price", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "LineTotal",  "business_name": "Line Total Cost",        "description": "Total cost for this PO line.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "WhsCode",    "business_name": "Destination Warehouse",  "description": "FK to OWHS.", "type": "nVarChar", "length": 8, "is_pk": false, "is_fk": true, "references": {"table":"OWHS","business_name":"Warehouse","column":"WhsCode","confidence":0.90} },
+      { "column_number": 10, "field": "ShipDate",   "business_name": "Expected Receipt Date",  "description": "Date goods expected from vendor.", "type": "Date", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 11, "field": "LineStatus", "business_name": "Line Status",            "description": "Status of this PO line.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"O":"Open","C":"Closed"} }
+    ]
+  },
+  {
+    "table_name": "OPRQ",
+    "business_name": "Purchase Request (Material Request / Purchase Requisition)",
+    "module": "Purchasing",
+    "module_id": 4,
+    "description": "Internal request to procure goods or services. Precedes Purchase Order. Raised by departments/stores.",
+    "is_master": true, "is_header": true, "is_line": false,
+    "total_columns": 30,
+    "primary_key": { "columns": ["DocEntry"], "confidence": 0.90, "rule": "document_header" },
+    "joins": [
+      { "to_table": "PRQ1", "to_business_name": "Purchase Request Line Items", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "OPRQ.DocEntry = PRQ1.DocEntry", "join_type": "LEFT", "purpose": "Get requested items and quantities", "confidence": 0.99 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",  "business_name": "PR Internal ID",     "description": "Unique system key. FK target in PRQ1.", "type": "Int",  "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "DocNum",    "business_name": "PR Number",           "description": "User-facing purchase request number.", "type": "Int", "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "DocStatus", "business_name": "PR Status",           "description": "Status of the purchase request.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"O":"Open","C":"Closed"} },
+      { "column_number": 4, "field": "DocDate",   "business_name": "Request Date",        "description": "Date the request was raised.", "type": "Date", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "DocDueDate","business_name": "Required By Date",    "description": "Date by which goods are needed.", "type": "Date", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "DocTotal",  "business_name": "PR Total Value",      "description": "Total estimated value of the request.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7, "field": "Comments",  "business_name": "Remarks / Justification","description": "Reason for the purchase request.", "type": "nVarChar", "length": 254, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "PRQ1",
+    "business_name": "Purchase Request Line Items",
+    "module": "Purchasing",
+    "module_id": 4,
+    "description": "Line items on a purchase request — items or services requested for procurement.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 18,
+    "primary_key": { "columns": ["DocEntry","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OPRQ", "to_business_name": "Purchase Request", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "PRQ1.DocEntry = OPRQ.DocEntry", "join_type": "LEFT", "purpose": "Get PR header details", "confidence": 0.99 },
+      { "to_table": "OITM", "to_business_name": "Item Master Data", "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "PRQ1.ItemCode = OITM.ItemCode", "join_type": "LEFT", "purpose": "Get item details",       "confidence": 0.95 },
+      { "to_table": "OWHS", "to_business_name": "Warehouse",        "from_column": "WhsCode",  "to_column": "WhsCode",  "on_clause": "PRQ1.WhsCode = OWHS.WhsCode",   "join_type": "LEFT", "purpose": "Get warehouse goods are needed for", "confidence": 0.90 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",   "business_name": "PR Internal ID",      "description": "FK to OPRQ.DocEntry.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"OPRQ","business_name":"Purchase Request","column":"DocEntry","confidence":0.99} },
+      { "column_number": 2, "field": "LineNum",    "business_name": "Line Number",          "description": "Sequential line number.", "type": "Int", "length": 6, "is_pk": true, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "ItemCode",   "business_name": "Requested Item Code", "description": "FK to OITM.", "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": true, "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.95} },
+      { "column_number": 4, "field": "Dscription", "business_name": "Item Description",    "description": "Description of item requested.", "type": "nVarChar", "length": 100, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "Quantity",   "business_name": "Requested Quantity",  "description": "Quantity of item needed.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "Price",      "business_name": "Estimated Unit Price","description": "Estimated price per unit.", "type": "Price", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7, "field": "LineTotal",  "business_name": "Estimated Line Total","description": "Total estimated cost for this PR line.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8, "field": "WhsCode",    "business_name": "Required-for Warehouse","description": "FK to OWHS.", "type": "nVarChar", "length": 8, "is_pk": false, "is_fk": true, "references": {"table":"OWHS","business_name":"Warehouse","column":"WhsCode","confidence":0.90} }
+    ]
+  },
+  {
+    "table_name": "ORPC",
+    "business_name": "Purchase Credit Memo (A/P Credit Note)",
+    "module": "Purchasing",
+    "module_id": 4,
+    "description": "Credit note received from a vendor to reverse or reduce a purchase invoice. Reduces AP liability.",
+    "is_master": true, "is_header": true, "is_line": false,
+    "total_columns": 38,
+    "primary_key": { "columns": ["DocEntry"], "confidence": 0.90, "rule": "document_header" },
+    "joins": [
+      { "to_table": "RPC1", "to_business_name": "Purchase Credit Memo Line Items", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "ORPC.DocEntry = RPC1.DocEntry", "join_type": "LEFT", "purpose": "Get credited items and amounts",             "confidence": 0.99 },
+      { "to_table": "OCRD", "to_business_name": "Business Partner (Vendor)",       "from_column": "CardCode", "to_column": "CardCode", "on_clause": "ORPC.CardCode = OCRD.CardCode",  "join_type": "LEFT", "purpose": "Get vendor who issued this credit note",     "confidence": 0.95 },
+      { "to_table": "OPCH", "to_business_name": "Original Purchase Invoice",       "from_column": "BaseEntry","to_column": "DocEntry", "on_clause": "ORPC.BaseEntry = OPCH.DocEntry",  "join_type": "LEFT", "purpose": "Link credit memo to original purchase invoice","confidence": 0.85 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",  "business_name": "Purchase Credit Memo Internal ID","description": "Unique system key. FK target in RPC1.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "DocNum",    "business_name": "Credit Memo Number",               "description": "User-facing credit note number.", "type": "Int",      "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "DocStatus", "business_name": "Status",                           "description": "Status of this credit memo.", "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"O":"Open","C":"Closed"} },
+      { "column_number": 4, "field": "CardCode",  "business_name": "Vendor Code",                      "description": "FK to OCRD.", "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": true,  "references": {"table":"OCRD","business_name":"Business Partner (Vendor)","column":"CardCode","confidence":0.95} },
+      { "column_number": 5, "field": "CardName",  "business_name": "Vendor Name",                      "description": "Vendor who issued the credit note.", "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "DocDate",   "business_name": "Credit Memo Date",                 "description": "Date the vendor credit note was received.", "type": "Date", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7, "field": "DocTotal",  "business_name": "Credit Memo Total",                "description": "Total credit amount including tax.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8, "field": "BaseEntry", "business_name": "Original Purchase Invoice ID",     "description": "DocEntry of the original purchase invoice.", "type": "Int", "length": 11, "is_pk": false, "is_fk": true, "references": {"table":"OPCH","business_name":"Purchase Invoice","column":"DocEntry","confidence":0.85} }
+    ]
+  },
+  {
+    "table_name": "RPC1",
+    "business_name": "Purchase Credit Memo Line Items",
+    "module": "Purchasing",
+    "module_id": 4,
+    "description": "Line items on a purchase credit memo — items returned to vendor or credit received.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 18,
+    "primary_key": { "columns": ["DocEntry","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "ORPC", "to_business_name": "Purchase Credit Memo", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "RPC1.DocEntry = ORPC.DocEntry", "join_type": "LEFT", "purpose": "Get credit memo header details", "confidence": 0.99 },
+      { "to_table": "OITM", "to_business_name": "Item Master Data",     "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "RPC1.ItemCode = OITM.ItemCode", "join_type": "LEFT", "purpose": "Get item details",               "confidence": 0.95 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",   "business_name": "Credit Memo Internal ID", "description": "FK to ORPC.DocEntry.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"ORPC","business_name":"Purchase Credit Memo","column":"DocEntry","confidence":0.99} },
+      { "column_number": 2, "field": "LineNum",    "business_name": "Line Number",              "description": "Sequential line number.", "type": "Int", "length": 6, "is_pk": true, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "ItemCode",   "business_name": "Item Code",                "description": "FK to OITM.", "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": true, "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.95} },
+      { "column_number": 4, "field": "Dscription", "business_name": "Item Description",         "description": "Description of credited item.", "type": "nVarChar", "length": 100, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "Quantity",   "business_name": "Credited Quantity",        "description": "Quantity returned to vendor or credited.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "Price",      "business_name": "Unit Credit Price",        "description": "Price per unit being credited.", "type": "Price", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7, "field": "LineTotal",  "business_name": "Line Credit Total",        "description": "Total credit value for this line.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  }
+]

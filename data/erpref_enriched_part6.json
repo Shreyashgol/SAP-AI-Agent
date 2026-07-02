@@ -1,0 +1,136 @@
+[
+  {
+    "table_name": "OWOR",
+    "business_name": "Production / Work Order (Manufacturing Order)",
+    "module": "Production",
+    "module_id": 7,
+    "description": "Header for a manufacturing order / work order. Each row is one production run to produce a finished good from raw materials using a Bill of Materials (BOM).",
+    "is_master": true, "is_header": true, "is_line": false,
+    "total_columns": 40,
+    "primary_key": { "columns": ["DocEntry"], "confidence": 0.90, "rule": "document_header" },
+    "joins": [
+      { "to_table": "WOR1", "to_business_name": "Production Order Components (BOM Lines)", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "OWOR.DocEntry = WOR1.DocEntry", "join_type": "LEFT", "purpose": "Get raw materials and components needed for production",    "confidence": 0.99 },
+      { "to_table": "OITM", "to_business_name": "Finished Good Item",                     "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "OWOR.ItemCode = OITM.ItemCode", "join_type": "LEFT", "purpose": "Get details of the item being produced",                 "confidence": 0.95 },
+      { "to_table": "OITT", "to_business_name": "Bill of Materials (BOM)",                "from_column": "ItemCode", "to_column": "Code",     "on_clause": "OWOR.ItemCode = OITT.Code",     "join_type": "LEFT", "purpose": "Get the BOM template used for this production order",     "confidence": 0.88 },
+      { "to_table": "OWHS", "to_business_name": "Production Warehouse",                   "from_column": "PlannedQty","to_column": "WhsCode", "on_clause": "OWOR.Warehouse = OWHS.WhsCode", "join_type": "LEFT", "purpose": "Get the production output warehouse",                     "confidence": 0.80 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "DocEntry",    "business_name": "Production Order Internal ID",     "description": "Unique system key. FK target in WOR1.",                         "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "DocNum",      "business_name": "Production Order Number",          "description": "User-facing production order number.",                         "type": "Int",      "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "Status",      "business_name": "Production Order Status",          "description": "Current status of the production order.",                      "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"P":"Planned","R":"Released","C":"Closed","L":"Cancelled"} },
+      { "column_number": 4,  "field": "Type",        "business_name": "Production Order Type",            "description": "Type of production order.",                                    "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"S":"Standard","D":"Disassembly","T":"Special"} },
+      { "column_number": 5,  "field": "ItemCode",    "business_name": "Finished Good Item Code",          "description": "Item being produced. FK to OITM.",                             "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": true,  "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.95} },
+      { "column_number": 6,  "field": "ProdName",    "business_name": "Item Description",                 "description": "Description of the finished good being produced.",              "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "PlannedQty",  "business_name": "Planned Production Quantity",      "description": "Quantity planned to be produced.",                              "type": "Quantity", "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "CmpltQty",    "business_name": "Completed Quantity",               "description": "Quantity actually produced and received into stock.",           "type": "Quantity", "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "RjctQty",     "business_name": "Rejected / Scrapped Quantity",     "description": "Quantity rejected during production quality check.",            "type": "Quantity", "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "StartDate",   "business_name": "Planned Start Date",               "description": "Date production is scheduled to begin.",                       "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 11, "field": "DueDate",     "business_name": "Planned Completion Date",          "description": "Date production is scheduled to complete.",                     "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 12, "field": "CloseDate",   "business_name": "Actual Completion Date",           "description": "Date the production order was actually closed.",                "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 13, "field": "Warehouse",   "business_name": "Output Warehouse",                 "description": "Warehouse where finished goods go after production. FK to OWHS.", "type": "nVarChar", "length": 8, "is_pk": false, "is_fk": true, "references": {"table":"OWHS","business_name":"Warehouse","column":"WhsCode","confidence":0.80} },
+      { "column_number": 14, "field": "PrjCode",     "business_name": "Project Code",                     "description": "Project this production order is linked to. FK to OPRJ.",     "type": "nVarChar", "length": 8,  "is_pk": false, "is_fk": true,  "references": {"table":"OPRJ","business_name":"Project","column":"PrjCode","confidence":0.82} },
+      { "column_number": 15, "field": "Comments",    "business_name": "Remarks",                          "description": "Free-text notes on this production order.",                    "type": "nVarChar", "length": 254,"is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "WOR1",
+    "business_name": "Production Order Components (Bill of Materials Lines)",
+    "module": "Production",
+    "module_id": 7,
+    "description": "Raw materials and components required for a production order. Each line is one component from the BOM that will be consumed (goods-issued) during production.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 20,
+    "primary_key": { "columns": ["DocEntry","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OWOR", "to_business_name": "Production Order Header", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "WOR1.DocEntry = OWOR.DocEntry", "join_type": "LEFT", "purpose": "Get production order details",               "confidence": 0.99 },
+      { "to_table": "OITM", "to_business_name": "Component Item Master",  "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "WOR1.ItemCode = OITM.ItemCode", "join_type": "LEFT", "purpose": "Get component item name, UOM, and cost",    "confidence": 0.95 },
+      { "to_table": "OWHS", "to_business_name": "Component Warehouse",    "from_column": "WhsCode",  "to_column": "WhsCode",  "on_clause": "WOR1.WhsCode = OWHS.WhsCode",   "join_type": "LEFT", "purpose": "Get warehouse from which component is drawn","confidence": 0.90 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "DocEntry",   "business_name": "Production Order Internal ID", "description": "FK to OWOR.DocEntry.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"OWOR","business_name":"Production Order","column":"DocEntry","confidence":0.99} },
+      { "column_number": 2,  "field": "LineNum",    "business_name": "Component Line Number",        "description": "Sequential line number.", "type": "Int", "length": 6, "is_pk": true, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "ItemCode",   "business_name": "Component Item Code",          "description": "Raw material or component. FK to OITM.", "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": true, "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.95} },
+      { "column_number": 4,  "field": "Dscription", "business_name": "Component Description",        "description": "Description of the component.", "type": "nVarChar", "length": 100, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "PlannedQty", "business_name": "Planned Component Quantity",   "description": "Quantity of this component required per BOM.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "IssuedQty",  "business_name": "Issued Quantity",              "description": "Quantity actually consumed in production.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "UomCode",    "business_name": "Unit of Measure",              "description": "UOM for this component.", "type": "nVarChar", "length": 8, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "WhsCode",    "business_name": "Component Source Warehouse",   "description": "Warehouse from which component stock is drawn. FK to OWHS.", "type": "nVarChar", "length": 8, "is_pk": false, "is_fk": true, "references": {"table":"OWHS","business_name":"Warehouse","column":"WhsCode","confidence":0.90} },
+      { "column_number": 9,  "field": "Price",      "business_name": "Component Unit Cost",          "description": "Cost price per unit of this component.", "type": "Price", "length": 0, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OITT",
+    "business_name": "Bill of Materials Header (BOM Template)",
+    "module": "Production",
+    "module_id": 7,
+    "description": "Template defining the components required to produce one unit of a finished good. Each row is one BOM. Line items stored in ITT1.",
+    "is_master": true, "is_header": true, "is_line": false,
+    "total_columns": 15,
+    "primary_key": { "columns": ["Code"], "confidence": 0.95, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "ITT1", "to_business_name": "BOM Component Lines",   "from_column": "Code",     "to_column": "Code",     "on_clause": "OITT.Code = ITT1.Code",         "join_type": "LEFT", "purpose": "Get components and quantities for this BOM",  "confidence": 0.99 },
+      { "to_table": "OITM", "to_business_name": "Finished Good Item",    "from_column": "Code",     "to_column": "ItemCode", "on_clause": "OITT.Code = OITM.ItemCode",     "join_type": "LEFT", "purpose": "Get item details of the finished product",    "confidence": 0.90 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "Code",      "business_name": "BOM Code (Finished Good Item Code)", "description": "PK — same as the OITM.ItemCode of the finished good.", "type": "nVarChar", "length": 20, "is_pk": true,  "is_fk": true,  "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.90} },
+      { "column_number": 2, "field": "Name",      "business_name": "BOM Description",                   "description": "Description of this bill of materials.", "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "Type",      "business_name": "BOM Type",                          "description": "Type of BOM.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"P":"Production","S":"Sales","D":"Disassembly","T":"Template"} },
+      { "column_number": 4, "field": "Quantity",  "business_name": "BOM Yield Quantity",               "description": "Number of finished units produced by one execution of this BOM.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "ITT1",
+    "business_name": "Bill of Materials Component Lines",
+    "module": "Production",
+    "module_id": 7,
+    "description": "Individual component lines in a BOM — each row is one raw material or sub-assembly needed to produce the BOM's finished good.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 12,
+    "primary_key": { "columns": ["Code","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OITT", "to_business_name": "BOM Header",         "from_column": "Code",     "to_column": "Code",     "on_clause": "ITT1.Code = OITT.Code",         "join_type": "LEFT", "purpose": "Get BOM header (finished product)",      "confidence": 0.99 },
+      { "to_table": "OITM", "to_business_name": "Component Item",     "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "ITT1.ItemCode = OITM.ItemCode", "join_type": "LEFT", "purpose": "Get component item name and details",   "confidence": 0.95 },
+      { "to_table": "OWHS", "to_business_name": "Component Warehouse","from_column": "WhsCode",  "to_column": "WhsCode",  "on_clause": "ITT1.WhsCode = OWHS.WhsCode",   "join_type": "LEFT", "purpose": "Get default warehouse for this component","confidence": 0.85 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "Code",      "business_name": "BOM Code (Finished Good)", "description": "FK to OITT.Code. Composite PK with LineNum.", "type": "nVarChar", "length": 20, "is_pk": true,  "is_fk": true,  "references": {"table":"OITT","business_name":"BOM Header","column":"Code","confidence":0.99} },
+      { "column_number": 2, "field": "LineNum",   "business_name": "Component Line Number",    "description": "Sequential line number.", "type": "Int",  "length": 6, "is_pk": true, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "ItemCode",  "business_name": "Component Item Code",      "description": "Raw material or sub-assembly. FK to OITM.", "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": true, "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.95} },
+      { "column_number": 4, "field": "Quantity",  "business_name": "Component Quantity",       "description": "Quantity of this component per BOM yield.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "UomCode",   "business_name": "Unit of Measure",          "description": "UOM for this component.", "type": "nVarChar", "length": 8, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "WhsCode",   "business_name": "Component Warehouse",      "description": "Default warehouse for this component. FK to OWHS.", "type": "nVarChar", "length": 8, "is_pk": false, "is_fk": true, "references": {"table":"OWHS","business_name":"Warehouse","column":"WhsCode","confidence":0.85} },
+      { "column_number": 7, "field": "CompType",  "business_name": "Component Type",           "description": "Type of BOM component.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"I":"Item","L":"Labour","O":"Other","T":"Text"} }
+    ]
+  },
+  {
+    "table_name": "OHEM",
+    "business_name": "Employee Master Data (HR Employee Record)",
+    "module": "Human Resources",
+    "module_id": 8,
+    "description": "Master record for all employees. Stores personal details, department, designation, joining date, and salary. Used in HR and payroll reporting.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 45,
+    "primary_key": { "columns": ["empID"], "confidence": 0.97, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OSLP", "to_business_name": "Sales Employee", "from_column": "empID",    "to_column": "SlpCode",  "on_clause": "OHEM.empID = OSLP.SlpCode",     "join_type": "LEFT", "purpose": "Link HR employee to sales employee record for commission reporting", "confidence": 0.80 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "empID",       "business_name": "Employee Internal ID",         "description": "Unique system-generated employee ID. PK.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "lastName",    "business_name": "Last Name",                    "description": "Employee last name.", "type": "nVarChar", "length": 32, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "firstName",   "business_name": "First Name",                   "description": "Employee first name.", "type": "nVarChar", "length": 32, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4,  "field": "middleName",  "business_name": "Middle Name",                  "description": "Employee middle name.", "type": "nVarChar", "length": 32, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "gender",      "business_name": "Gender",                       "description": "Employee gender.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"M":"Male","F":"Female"} },
+      { "column_number": 6,  "field": "cmpPrivate",  "business_name": "Employment Status",            "description": "Whether the employee is employed or external.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"E":"Employee","C":"Contractor"} },
+      { "column_number": 7,  "field": "dept",        "business_name": "Department",                   "description": "Department the employee belongs to.", "type": "Int",      "length": 6,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "position",    "business_name": "Job Position / Designation",   "description": "Employee's job position.", "type": "Int",      "length": 6,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "branch",      "business_name": "Branch / Location",            "description": "Branch or office where the employee is based.", "type": "Int",      "length": 6,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "startDate",   "business_name": "Date of Joining",              "description": "Date the employee joined the company.", "type": "Date", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 11, "field": "statusCode",  "business_name": "Employment Status Code",       "description": "Current employment status.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"A":"Active","T":"Terminated","L":"On Leave","R":"Retired"} },
+      { "column_number": 12, "field": "salary",      "business_name": "Monthly Salary",               "description": "Employee's current monthly salary.", "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 13, "field": "phone1",      "business_name": "Work Phone",                   "description": "Work phone number.", "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 14, "field": "mobile",      "business_name": "Mobile Number",                "description": "Personal mobile number.", "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 15, "field": "email",       "business_name": "Work Email",                   "description": "Work email address.", "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 16, "field": "manager",     "business_name": "Reporting Manager Employee ID","description": "empID of the line manager. FK to OHEM (self-join).", "type": "Int",      "length": 11, "is_pk": false, "is_fk": true,  "references": {"table":"OHEM","business_name":"Employee Master","column":"empID","confidence":0.85} }
+    ]
+  }
+]

@@ -1,0 +1,139 @@
+[
+  {
+    "table_name": "OSLP",
+    "business_name": "Sales Employee / Buyer Master Data",
+    "module": "Sales",
+    "module_id": 1,
+    "description": "Master table of sales employees and buyers. Referenced on every sales document (OINV, ORDR, OQUT) and purchase document (OPCH, OPDN, OPOR). Key for commission, sales rep performance, and buyer reports.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 12,
+    "primary_key": { "columns": ["SlpCode"], "confidence": 0.99, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OINV", "to_business_name": "A/R Invoice",    "from_column": "SlpCode", "to_column": "SlpCode", "on_clause": "OSLP.SlpCode = OINV.SlpCode", "join_type": "LEFT", "purpose": "Get all invoices handled by this sales rep",      "confidence": 0.90 },
+      { "to_table": "OCRD", "to_business_name": "Business Partner","from_column": "SlpCode", "to_column": "SlpCode", "on_clause": "OSLP.SlpCode = OCRD.SlpCode", "join_type": "LEFT", "purpose": "Get all customers managed by this sales employee", "confidence": 0.88 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "SlpCode",   "business_name": "Sales Employee Code",     "description": "Unique code for the sales employee. PK and FK target across all documents.", "type": "Int",      "length": 6,   "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "SlpName",   "business_name": "Sales Employee Name",     "description": "Full name of the sales employee or buyer.", "type": "nVarChar", "length": 155, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "Memo",      "business_name": "Notes / Remarks",         "description": "Free-text notes about this sales employee.", "type": "nVarChar", "length": 50,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4, "field": "Active",    "business_name": "Active Status",           "description": "Whether this sales employee is currently active.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Y":"Active","N":"Inactive"} },
+      { "column_number": 5, "field": "Commission","business_name": "Commission Rate (%)",     "description": "Default commission percentage for this sales rep.", "type": "Rate", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "GroupCode", "business_name": "Sales Employee Group",   "description": "Group this sales employee belongs to (e.g. North, South, Export).", "type": "Int", "length": 6, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OPRJ",
+    "business_name": "Project Master Data",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Defines projects for project-based cost tracking. Referenced on sales documents, purchase documents, and GL journal entries via PrjCode.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 15,
+    "primary_key": { "columns": ["PrjCode"], "confidence": 0.99, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OINV", "to_business_name": "A/R Invoice",    "from_column": "PrjCode", "to_column": "PrjCode", "on_clause": "OPRJ.PrjCode = OINV.PrjCode", "join_type": "LEFT", "purpose": "Get all invoices linked to this project",        "confidence": 0.85 },
+      { "to_table": "OPCH", "to_business_name": "A/P Invoice",    "from_column": "PrjCode", "to_column": "PrjCode", "on_clause": "OPRJ.PrjCode = OPCH.PrjCode", "join_type": "LEFT", "purpose": "Get all purchase invoices for this project",    "confidence": 0.85 },
+      { "to_table": "JDT1", "to_business_name": "GL Journal Lines","from_column": "PrjCode", "to_column": "PrjCode", "on_clause": "OPRJ.PrjCode = JDT1.ProfitCode","join_type": "LEFT","purpose": "Get all GL postings charged to this project", "confidence": 0.80 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "PrjCode",  "business_name": "Project Code",        "description": "Unique project code. PK and FK target across documents.", "type": "nVarChar", "length": 8,   "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "PrjName",  "business_name": "Project Name",        "description": "Full name of the project.", "type": "nVarChar", "length": 100, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "ValidFrom","business_name": "Project Start Date",  "description": "Date the project becomes active.", "type": "Date", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4, "field": "ValidTo",  "business_name": "Project End Date",    "description": "Date the project is expected to close.", "type": "Date", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "Active",   "business_name": "Active Status",       "description": "Whether this project is open.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"tYES":"Active","tNO":"Closed"} }
+    ]
+  },
+  {
+    "table_name": "OOCR",
+    "business_name": "Distribution Rule (Cost Centre Master Data)",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Defines distribution rules / cost centres used in management accounting. Referenced via OcrCode on documents and GL lines for cost centre reporting.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 10,
+    "primary_key": { "columns": ["OcrCode"], "confidence": 0.99, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "JDT1", "to_business_name": "GL Journal Lines", "from_column": "OcrCode", "to_column": "OcrCode", "on_clause": "OOCR.OcrCode = JDT1.OcrCode", "join_type": "LEFT", "purpose": "Get all GL postings to this cost centre", "confidence": 0.85 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "OcrCode",  "business_name": "Cost Centre / Distribution Rule Code", "description": "Unique code for this distribution rule / cost centre. PK.", "type": "nVarChar", "length": 8, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "OcrName",  "business_name": "Cost Centre Name",                     "description": "Full name of the cost centre (e.g. Sales, Operations, Admin).", "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "InAct",    "business_name": "Is Inactive",                          "description": "Y if this cost centre is no longer in use.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Y":"Inactive","N":"Active"} }
+    ]
+  },
+  {
+    "table_name": "OPRC",
+    "business_name": "Profit Centre Master Data",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Defines profit centres for management accounting. Referenced in JDT1 via PrcCode. Enables P&L reporting by division or business unit.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 8,
+    "primary_key": { "columns": ["PrcCode"], "confidence": 0.99, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "JDT1", "to_business_name": "GL Journal Lines", "from_column": "PrcCode", "to_column": "PrcCode", "on_clause": "OPRC.PrcCode = JDT1.PrcCode", "join_type": "LEFT", "purpose": "Get all GL postings allocated to this profit centre", "confidence": 0.85 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "PrcCode",  "business_name": "Profit Centre Code", "description": "Unique code for the profit centre. PK. FK in JDT1.", "type": "nVarChar", "length": 8, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "PrcName",  "business_name": "Profit Centre Name", "description": "Full name of the profit centre (e.g. North Zone, Export Division).", "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "Active",   "business_name": "Active Status",      "description": "Whether this profit centre is active.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"tYES":"Active","tNO":"Closed"} }
+    ]
+  },
+  {
+    "table_name": "OPLN",
+    "business_name": "Price List Master Data",
+    "module": "Sales",
+    "module_id": 1,
+    "description": "Defines pricing tiers / price lists (e.g. Retail, Wholesale, Export). Each business partner is assigned one price list that determines default selling prices.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 10,
+    "primary_key": { "columns": ["ListNum"], "confidence": 0.99, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OCRD", "to_business_name": "Business Partner", "from_column": "ListNum", "to_column": "ListNum", "on_clause": "OPLN.ListNum = OCRD.ListNum", "join_type": "LEFT", "purpose": "Get all customers on this price list", "confidence": 0.88 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "ListNum",  "business_name": "Price List Number",   "description": "Unique price list number. PK and FK in OCRD.", "type": "Int",      "length": 6,  "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "ListName", "business_name": "Price List Name",     "description": "Name of the price list (e.g. Retail, Dealer, Export).", "type": "nVarChar", "length": 30, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "BasePrLst","business_name": "Base Price List",     "description": "Price list from which this one derives (e.g. Dealer = Base + 10%).", "type": "Int", "length": 6, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4, "field": "Factor",   "business_name": "Pricing Factor (%)",  "description": "Percentage factor applied on top of the base price list.", "type": "Rate", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "Currency", "business_name": "Price List Currency", "description": "Default currency for prices in this list.", "type": "nVarChar", "length": 3, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OUOM",
+    "business_name": "Unit of Measure (UOM) Master Data",
+    "module": "Inventory",
+    "module_id": 3,
+    "description": "Defines all units of measure used in the system (KG, Box, Pcs, Litre, MT, etc.). Referenced in OITM and all transaction line items.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 6,
+    "primary_key": { "columns": ["UomCode"], "confidence": 0.99, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OITM", "to_business_name": "Item Master Data", "from_column": "UomCode", "to_column": "SalUnitMsr", "on_clause": "OUOM.UomCode = OITM.SalUnitMsr", "join_type": "LEFT", "purpose": "Get all items that use this unit of measure for sales", "confidence": 0.88 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "UomCode",  "business_name": "UOM Code",        "description": "Unique code for the unit of measure. PK and FK in OITM.", "type": "nVarChar", "length": 8,  "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "UomName",  "business_name": "UOM Name",        "description": "Full name of the unit (e.g. Kilogram, Box, Piece, Litre).", "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "Inactive", "business_name": "Is Inactive",     "description": "Y if this UOM is no longer in use.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Y":"Inactive","N":"Active"} }
+    ]
+  },
+  {
+    "table_name": "OCRN",
+    "business_name": "Currency Master Data",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Defines all currencies supported in SAP B1. Used for multi-currency transactions on invoices, payments, and GL postings.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 12,
+    "primary_key": { "columns": ["CurrCode"], "confidence": 0.99, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OCRD", "to_business_name": "Business Partner", "from_column": "CurrCode", "to_column": "Currency", "on_clause": "OCRN.CurrCode = OCRD.Currency", "join_type": "LEFT", "purpose": "Get all BPs transacting in this currency", "confidence": 0.82 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "CurrCode",  "business_name": "Currency Code",        "description": "ISO currency code (e.g. INR, USD, EUR, GBP). PK.", "type": "nVarChar", "length": 3,  "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "CurrName",  "business_name": "Currency Name",        "description": "Full name of the currency (e.g. Indian Rupee, US Dollar).", "type": "nVarChar", "length": 30, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "CurrSymbol","business_name": "Currency Symbol",      "description": "Display symbol (e.g. ₹, $, €).", "type": "nVarChar", "length": 5, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4, "field": "Rate",      "business_name": "Exchange Rate to Base","description": "Current exchange rate relative to system base currency.", "type": "Rate", "length": 0, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  }
+]

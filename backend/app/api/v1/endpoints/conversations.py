@@ -423,4 +423,14 @@ async def ask_stream(
         }
         yield json.dumps({"type": "final", "data": final}) + "\n"
 
-    return StreamingResponse(generate(), media_type="application/x-ndjson")
+    return StreamingResponse(
+        generate(),
+        media_type="application/x-ndjson",
+        # Disable response buffering so each reasoning step reaches the client as
+        # it is produced (nginx honours X-Accel-Buffering; Cache-Control avoids
+        # any intermediary caching the stream).
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )

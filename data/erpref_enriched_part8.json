@@ -1,0 +1,251 @@
+[
+  {
+    "table_name": "ITM1",
+    "business_name": "Item Prices per Price List",
+    "module": "Inventory",
+    "module_id": 3,
+    "description": "Stores the price of each item for each price list. One row per item-pricelist combination. This is the definitive source for selling prices — OITM only holds the last purchase price and last sale price, not the structured price list prices.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 12,
+    "primary_key": { "columns": ["ItemCode","PriceList"], "confidence": 0.97, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OITM", "to_business_name": "Item Master Data", "from_column": "ItemCode",  "to_column": "ItemCode", "on_clause": "ITM1.ItemCode = OITM.ItemCode",   "join_type": "LEFT", "purpose": "Get item name, group, and UOM for this price row",       "confidence": 0.99 },
+      { "to_table": "OPLN", "to_business_name": "Price List",       "from_column": "PriceList", "to_column": "ListNum",  "on_clause": "ITM1.PriceList = OPLN.ListNum", "join_type": "LEFT", "purpose": "Get the price list name (Retail, Wholesale, Export etc.)", "confidence": 0.97 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "ItemCode",   "business_name": "Item / Product Code",          "description": "FK to OITM.ItemCode. Composite PK with PriceList.",                          "type": "nVarChar", "length": 20, "is_pk": true,  "is_fk": true,  "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.99} },
+      { "column_number": 2,  "field": "PriceList",  "business_name": "Price List Number",            "description": "FK to OPLN.ListNum. Composite PK with ItemCode.",                            "type": "Int",      "length": 6,  "is_pk": true,  "is_fk": true,  "references": {"table":"OPLN","business_name":"Price List","column":"ListNum","confidence":0.97} },
+      { "column_number": 3,  "field": "Price",      "business_name": "Item Price for This List",     "description": "Selling price of this item on this price list (before discount).",           "type": "Price",    "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4,  "field": "Currency",   "business_name": "Price Currency",               "description": "Currency of this price (e.g. INR, USD).",                                   "type": "nVarChar", "length": 3,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "PriceAfVAT", "business_name": "Price Including Tax",          "description": "Price inclusive of VAT/GST.",                                               "type": "Price",    "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "UomEntry",   "business_name": "Unit of Measure",              "description": "UOM for which this price applies.",                                        "type": "Int",      "length": 11, "is_pk": false, "is_fk": true,  "references": {"table":"OUOM","business_name":"Unit of Measure","column":"UomCode","confidence":0.85} },
+      { "column_number": 7,  "field": "Factor",     "business_name": "Price Factor",                 "description": "Multiplier applied when this price derives from a base list.",               "type": "Rate",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "AutoUpdate", "business_name": "Auto-Update Flag",             "description": "Y = price auto-updates when base price list changes.",                      "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Y":"Auto-update on","N":"Manual price"} }
+    ]
+  },
+  {
+    "table_name": "INV4",
+    "business_name": "A/R Invoice Tax Lines (GST Breakdown per Invoice)",
+    "module": "Sales",
+    "module_id": 1,
+    "description": "Stores the detailed tax (GST) breakdown for each A/R invoice — CGST, SGST, IGST, CESS amounts per tax code. Essential for GSTR-1, GSTR-3B and all GST return filing in India. One row per tax code per invoice.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 15,
+    "primary_key": { "columns": ["DocEntry","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OINV", "to_business_name": "A/R Invoice",        "from_column": "DocEntry",  "to_column": "DocEntry",  "on_clause": "INV4.DocEntry = OINV.DocEntry",  "join_type": "LEFT", "purpose": "Get invoice header — customer, date, total",               "confidence": 0.99 },
+      { "to_table": "OSTC", "to_business_name": "Sales Tax Code",     "from_column": "StaCode",   "to_column": "Code",      "on_clause": "INV4.StaCode = OSTC.Code",       "join_type": "LEFT", "purpose": "Get GST code name and rate (CGST 9%, SGST 9%, IGST 18%)", "confidence": 0.92 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "DocEntry",   "business_name": "A/R Invoice Internal ID",    "description": "FK to OINV.DocEntry. Composite PK with LineNum.",                              "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"OINV","business_name":"A/R Invoice","column":"DocEntry","confidence":0.99} },
+      { "column_number": 2,  "field": "LineNum",    "business_name": "Tax Line Number",             "description": "Sequential line for each GST component on this invoice.",                     "type": "Int",      "length": 6,  "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "StaCode",    "business_name": "GST / Tax Code",              "description": "Tax code applied (e.g. GST18, IGST18, CGST9, SGST9). FK to OSTC.",           "type": "nVarChar", "length": 8,  "is_pk": false, "is_fk": true,  "references": {"table":"OSTC","business_name":"Sales Tax Code","column":"Code","confidence":0.92} },
+      { "column_number": 4,  "field": "TaxRate",    "business_name": "GST Rate (%)",                "description": "Tax rate applied (e.g. 18, 12, 5, 0 for exempt).",                            "type": "Rate",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "TaxSum",     "business_name": "Total GST Amount (INR)",      "description": "Total GST collected on this invoice for this tax code.",                      "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "TaxSumSy",   "business_name": "GST Amount in System Currency","description": "GST in system base currency (for FC transactions).",                         "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "TaxSumFc",   "business_name": "GST Amount in Foreign Currency","description": "GST in document foreign currency.",                                        "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "TaxbleAmnt", "business_name": "Taxable Base Amount",         "description": "Amount on which GST is calculated.",                                         "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "CalcBy",     "business_name": "Tax Calculated By",           "description": "How the tax was computed (on gross or net amount).",                         "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"N":"Net Amount","G":"Gross Amount"} }
+    ]
+  },
+  {
+    "table_name": "PCH4",
+    "business_name": "A/P Invoice Tax Lines (Input GST Breakdown per Purchase Invoice)",
+    "module": "Purchasing",
+    "module_id": 4,
+    "description": "Stores detailed input GST breakdown for each purchase invoice — CGST, SGST, IGST, CESS amounts per tax code. Essential for GSTR-2A reconciliation and input tax credit (ITC) reports.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 15,
+    "primary_key": { "columns": ["DocEntry","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OPCH", "to_business_name": "A/P Invoice",    "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "PCH4.DocEntry = OPCH.DocEntry", "join_type": "LEFT", "purpose": "Get purchase invoice header — vendor, date, total",         "confidence": 0.99 },
+      { "to_table": "OSTC", "to_business_name": "Sales Tax Code", "from_column": "StaCode",  "to_column": "Code",     "on_clause": "PCH4.StaCode = OSTC.Code",     "join_type": "LEFT", "purpose": "Get GST code name and rate for input tax credit analysis", "confidence": 0.92 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",   "business_name": "A/P Invoice Internal ID",        "description": "FK to OPCH.DocEntry. Composite PK with LineNum.",              "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"OPCH","business_name":"A/P Invoice","column":"DocEntry","confidence":0.99} },
+      { "column_number": 2, "field": "LineNum",    "business_name": "Tax Line Number",                "description": "Sequential line for each GST component.",                      "type": "Int",      "length": 6,  "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 3, "field": "StaCode",    "business_name": "Input GST / Tax Code",           "description": "GST code (e.g. CGST9, SGST9, IGST18). FK to OSTC.",           "type": "nVarChar", "length": 8,  "is_pk": false, "is_fk": true,  "references": {"table":"OSTC","business_name":"Sales Tax Code","column":"Code","confidence":0.92} },
+      { "column_number": 4, "field": "TaxRate",    "business_name": "Input GST Rate (%)",             "description": "GST rate on the purchase (e.g. 18, 12, 5).",                   "type": "Rate",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "TaxSum",     "business_name": "Input GST Amount (ITC)",         "description": "Total input GST claimable on this purchase invoice.",          "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "TaxSumSy",   "business_name": "Input GST in System Currency",   "description": "Input GST in system base currency.",                           "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7, "field": "TaxbleAmnt", "business_name": "Taxable Purchase Base Amount",   "description": "Purchase amount on which GST is calculated.",                 "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8, "field": "CalcBy",     "business_name": "Tax Calculated By",              "description": "Whether tax computed on net or gross.",                        "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"N":"Net Amount","G":"Gross Amount"} }
+    ]
+  },
+  {
+    "table_name": "OSTC",
+    "business_name": "Sales Tax Code Master (GST Code Definition)",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Defines all tax codes used in the system — GST rates, VAT codes, TDS codes. Each document line references a VatGroup/StaCode which maps here. Master for GST rate configuration.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 15,
+    "primary_key": { "columns": ["Code"], "confidence": 0.99, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "INV4", "to_business_name": "A/R Invoice Tax Lines", "from_column": "Code", "to_column": "StaCode", "on_clause": "OSTC.Code = INV4.StaCode", "join_type": "LEFT", "purpose": "Get all AR invoices using this tax code",              "confidence": 0.92 },
+      { "to_table": "PCH4", "to_business_name": "A/P Invoice Tax Lines", "from_column": "Code", "to_column": "StaCode", "on_clause": "OSTC.Code = PCH4.StaCode", "join_type": "LEFT", "purpose": "Get all AP invoices with this input tax code",         "confidence": 0.92 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "Code",       "business_name": "Tax Code",                  "description": "Unique GST/tax code (e.g. GST18, CGST9, IGST18, EXEMPT). PK.",    "type": "nVarChar", "length": 8,  "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "Name",       "business_name": "Tax Code Description",      "description": "Full name of the tax code (e.g. GST 18%, IGST 18%, Exempt).",      "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "Rate",       "business_name": "Tax Rate (%)",              "description": "Percentage rate for this tax code.",                               "type": "Rate",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4,  "field": "Category",   "business_name": "Tax Category",             "description": "Type of tax this code represents.",                                "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"O":"Output (Sales)","I":"Input (Purchase)","E":"Exempt","Z":"Zero-rated"} },
+      { "column_number": 5,  "field": "IsItemLevel","business_name": "Applied at Item Level",     "description": "Y if tax is applied per line item, N if at document header level.", "type": "Char",    "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Y":"Line-level","N":"Header-level"} },
+      { "column_number": 6,  "field": "Account",    "business_name": "Tax GL Account",           "description": "GL account where this tax is posted. FK to OACT.",                 "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": true,  "references": {"table":"OACT","business_name":"Chart of Accounts","column":"AcctCode","confidence":0.88} },
+      { "column_number": 7,  "field": "Inactive",   "business_name": "Is Inactive",              "description": "Y if this tax code is no longer in use.",                          "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Y":"Inactive","N":"Active"} }
+    ]
+  },
+  {
+    "table_name": "OBPL",
+    "business_name": "Business Place (Branch / GST Registration Unit)",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Defines each legal business place (branch) with its own GST registration number (GSTIN). In India, each state requires a separate GSTIN. Every sales and purchase document references a BPL ID to determine which GSTIN the transaction belongs to — critical for state-wise GST filing and multi-location reporting.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 20,
+    "primary_key": { "columns": ["BPLId"], "confidence": 0.99, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OINV", "to_business_name": "A/R Invoice",    "from_column": "BPLId", "to_column": "BPLId", "on_clause": "OBPL.BPLId = OINV.BPLId", "join_type": "LEFT", "purpose": "Get all AR invoices filed under this GSTIN/branch",    "confidence": 0.90 },
+      { "to_table": "OPCH", "to_business_name": "A/P Invoice",    "from_column": "BPLId", "to_column": "BPLId", "on_clause": "OBPL.BPLId = OPCH.BPLId", "join_type": "LEFT", "purpose": "Get all AP invoices under this GSTIN/branch",        "confidence": 0.90 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "BPLId",       "business_name": "Business Place ID",               "description": "Unique ID for each branch/business place. PK. FK in OINV, OPCH etc.",   "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "BPLName",     "business_name": "Branch / Business Place Name",    "description": "Name of the branch or business unit (e.g. Mumbai Branch, Delhi HO).",   "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "Address",     "business_name": "Branch Address",                  "description": "Physical address of this business place.",                              "type": "nVarChar", "length": 254,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4,  "field": "TaxIdNum",    "business_name": "GSTIN (GST Registration Number)",  "description": "15-digit GST Identification Number for this branch. Core field for all India GST filings.", "type": "nVarChar", "length": 32, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "VATRegNum",   "business_name": "VAT / TIN Number",                "description": "Old VAT/TIN registration number (pre-GST).",                            "type": "nVarChar", "length": 32, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "MainBPL",     "business_name": "Is Main / Head Office",           "description": "Y if this is the primary registered business place.",                   "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Y":"Head Office","N":"Branch"} },
+      { "column_number": 7,  "field": "Disabled",    "business_name": "Is Disabled / Closed",            "description": "Y if this business place is no longer active.",                         "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Y":"Disabled","N":"Active"} },
+      { "column_number": 8,  "field": "State",       "business_name": "State",                           "description": "State where this business place is registered.",                        "type": "nVarChar", "length": 3,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "Nature",      "business_name": "Business Nature / Type",          "description": "Nature of business for GST registration.",                              "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OSRN",
+    "business_name": "Serial Number Master Data",
+    "module": "Inventory",
+    "module_id": 3,
+    "description": "Master record for every serialized item in SAP B1. Tracks IMEI numbers, warranty expiry, manufacturer serial number, and which customer owns each unit. Essential for warranty management and serialized asset tracking.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 20,
+    "primary_key": { "columns": ["ItemCode","SysSerial"], "confidence": 0.97, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OITM", "to_business_name": "Item Master Data", "from_column": "ItemCode",  "to_column": "ItemCode",  "on_clause": "OSRN.ItemCode = OITM.ItemCode",  "join_type": "LEFT", "purpose": "Get item name and details for this serial number",                   "confidence": 0.99 },
+      { "to_table": "OCRD", "to_business_name": "Customer",         "from_column": "CardCode",  "to_column": "CardCode",  "on_clause": "OSRN.CardCode = OCRD.CardCode",  "join_type": "LEFT", "purpose": "Get the customer who currently owns this serialized unit",           "confidence": 0.90 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "ItemCode",    "business_name": "Item / Product Code",        "description": "FK to OITM.ItemCode. Composite PK with SysSerial.",                      "type": "nVarChar", "length": 20, "is_pk": true,  "is_fk": true,  "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.99} },
+      { "column_number": 2,  "field": "SysSerial",   "business_name": "System Serial Number (Internal ID)","description": "System-generated internal serial number ID.",                    "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "MnfSerial",   "business_name": "Manufacturer Serial Number", "description": "Serial number printed on the product by the manufacturer (e.g. IMEI).",  "type": "nVarChar", "length": 32, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4,  "field": "InternalSN",  "business_name": "Internal Serial Number",     "description": "Company's own serial number assigned to this unit.",                     "type": "nVarChar", "length": 32, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "CardCode",    "business_name": "Customer Code (Owner)",      "description": "Customer currently owning this unit. FK to OCRD.",                       "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": true,  "references": {"table":"OCRD","business_name":"Business Partner","column":"CardCode","confidence":0.90} },
+      { "column_number": 6,  "field": "InDate",      "business_name": "Date Received Into Stock",   "description": "Date this serial number entered the warehouse.",                         "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "OutDate",     "business_name": "Date Delivered to Customer", "description": "Date this serialized unit was sold/delivered.",                          "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "WhsCode",     "business_name": "Current Warehouse",          "description": "Warehouse where this unit currently resides. FK to OWHS.",              "type": "nVarChar", "length": 8,  "is_pk": false, "is_fk": true,  "references": {"table":"OWHS","business_name":"Warehouse","column":"WhsCode","confidence":0.88} },
+      { "column_number": 9,  "field": "MnfDate",     "business_name": "Manufacture Date",           "description": "Date this unit was manufactured.",                                      "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "ExpDate",     "business_name": "Warranty Expiry Date",       "description": "Date the warranty on this unit expires.",                               "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 11, "field": "Status",      "business_name": "Serial Number Status",       "description": "Current status of this serial number.",                                 "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"I":"In Stock","D":"Delivered","U":"Used","R":"Returned"} }
+    ]
+  },
+  {
+    "table_name": "SRI1",
+    "business_name": "Serial Numbers in Transactions (Serial Number Document Links)",
+    "module": "Inventory",
+    "module_id": 3,
+    "description": "Links serial numbers to the specific document lines they appear on (deliveries, returns, GRNs, goods issues). Enables full traceability — which serial was delivered to which customer on which invoice.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 12,
+    "primary_key": { "columns": ["DocEntry","DocLine","ItemCode","SysSerial"], "confidence": 0.92, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OSRN", "to_business_name": "Serial Number Master", "from_column": "ItemCode",  "to_column": "ItemCode",  "on_clause": "SRI1.ItemCode = OSRN.ItemCode AND SRI1.SysSerial = OSRN.SysSerial", "join_type": "LEFT", "purpose": "Get full serial number details (MNF serial, warranty, status)", "confidence": 0.99 },
+      { "to_table": "ODLN", "to_business_name": "Delivery Note",        "from_column": "DocEntry",  "to_column": "DocEntry",  "on_clause": "SRI1.DocEntry = ODLN.DocEntry",  "join_type": "LEFT", "purpose": "Get delivery note this serial was dispatched on",               "confidence": 0.88 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",   "business_name": "Document Internal ID",      "description": "DocEntry of the document (delivery, GRN, goods issue) where serial was used.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "DocLine",    "business_name": "Document Line Number",      "description": "Line number on the document.",                                                   "type": "Int",      "length": 6,  "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 3, "field": "ItemCode",   "business_name": "Item Code",                 "description": "FK to OSRN (composite with SysSerial) and OITM.",                               "type": "nVarChar", "length": 20, "is_pk": true,  "is_fk": true,  "references": {"table":"OSRN","business_name":"Serial Number Master","column":"ItemCode","confidence":0.99} },
+      { "column_number": 4, "field": "SysSerial",  "business_name": "System Serial ID",          "description": "FK to OSRN.SysSerial.",                                                         "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"OSRN","business_name":"Serial Number Master","column":"SysSerial","confidence":0.99} },
+      { "column_number": 5, "field": "Direction",  "business_name": "Stock Direction",           "description": "Whether serial is going in or out of stock.",                                   "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"I":"In (GRN/Return)","O":"Out (Delivery/Issue)"} },
+      { "column_number": 6, "field": "DocType",    "business_name": "Document Type Code",        "description": "Type of document this serial appears on (15=Delivery, 20=GRN, etc.).",          "type": "Int",      "length": 6,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7, "field": "DocDate",    "business_name": "Transaction Date",          "description": "Date the document was created.",                                               "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OILC",
+    "business_name": "Landed Costs Header (Import Duty & Freight Allocation)",
+    "module": "Purchasing",
+    "module_id": 4,
+    "description": "Allocates import-related costs (customs duty, freight, CHA charges, insurance) to GRN items. Increases the landed cost of imported items. Essential for accurate costing of imported goods.",
+    "is_master": true, "is_header": true, "is_line": false,
+    "total_columns": 22,
+    "primary_key": { "columns": ["DocEntry"], "confidence": 0.90, "rule": "document_header" },
+    "joins": [
+      { "to_table": "ILC1", "to_business_name": "Landed Cost Allocation Lines", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "OILC.DocEntry = ILC1.DocEntry", "join_type": "LEFT", "purpose": "Get per-item cost allocation for this landed cost",         "confidence": 0.99 },
+      { "to_table": "OCRD", "to_business_name": "Business Partner (Vendor)",    "from_column": "CardCode", "to_column": "CardCode", "on_clause": "OILC.CardCode = OCRD.CardCode",  "join_type": "LEFT", "purpose": "Get the freight/CHA vendor who charged these costs",      "confidence": 0.90 },
+      { "to_table": "OPDN", "to_business_name": "Goods Receipt PO (GRN)",       "from_column": "BaseEntry","to_column": "DocEntry", "on_clause": "OILC.BaseEntry = OPDN.DocEntry",  "join_type": "LEFT", "purpose": "Get the GRN to which landed costs are being allocated",  "confidence": 0.88 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "DocEntry",   "business_name": "Landed Cost Internal ID",      "description": "Unique system key. FK target in ILC1.",                                    "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "DocNum",     "business_name": "Landed Cost Number",           "description": "User-facing landed cost document number.",                                 "type": "Int",      "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "CardCode",   "business_name": "Freight / CHA Vendor Code",   "description": "Vendor who charged freight, duty, or CHA. FK to OCRD.",                    "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": true,  "references": {"table":"OCRD","business_name":"Business Partner (Vendor)","column":"CardCode","confidence":0.90} },
+      { "column_number": 4,  "field": "DocDate",    "business_name": "Landed Cost Date",             "description": "Date the landed cost document was created.",                               "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "DocTotal",   "business_name": "Total Landed Cost Amount",     "description": "Total additional cost allocated to goods.",                                "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "BaseEntry",  "business_name": "GRN Internal ID",             "description": "DocEntry of the originating GRN. FK to OPDN.",                            "type": "Int",      "length": 11, "is_pk": false, "is_fk": true,  "references": {"table":"OPDN","business_name":"Goods Receipt PO","column":"DocEntry","confidence":0.88} },
+      { "column_number": 7,  "field": "Comments",   "business_name": "Remarks",                     "description": "Notes on this landed cost (e.g. Bill of Entry number).",                  "type": "nVarChar", "length": 254,"is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "ILC1",
+    "business_name": "Landed Cost Allocation Lines (Per-Item Cost Breakdown)",
+    "module": "Purchasing",
+    "module_id": 4,
+    "description": "Allocates each landed cost component (duty, freight, insurance) to individual GRN item lines. One row per cost type per item. Increases the item's inventory valuation cost.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 15,
+    "primary_key": { "columns": ["DocEntry","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OILC", "to_business_name": "Landed Cost Header", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "ILC1.DocEntry = OILC.DocEntry", "join_type": "LEFT", "purpose": "Get landed cost document header details",             "confidence": 0.99 },
+      { "to_table": "OITM", "to_business_name": "Item Master Data",   "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "ILC1.ItemCode = OITM.ItemCode", "join_type": "LEFT", "purpose": "Get item name for which cost is being allocated",    "confidence": 0.95 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",    "business_name": "Landed Cost Internal ID",      "description": "FK to OILC.DocEntry. Composite PK with LineNum.",                 "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"OILC","business_name":"Landed Cost Header","column":"DocEntry","confidence":0.99} },
+      { "column_number": 2, "field": "LineNum",     "business_name": "Allocation Line Number",       "description": "Sequential line number for each allocation.",                     "type": "Int",      "length": 6,  "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 3, "field": "ItemCode",    "business_name": "Item Code",                   "description": "Item receiving the cost allocation. FK to OITM.",                 "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": true,  "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.95} },
+      { "column_number": 4, "field": "Quantity",    "business_name": "Item Quantity",               "description": "Quantity of item on the GRN line being allocated to.",           "type": "Quantity", "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "CostType",    "business_name": "Cost Component Type",         "description": "Type of landed cost (e.g. Customs Duty, Freight, Insurance).",  "type": "nVarChar", "length": 8,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "Amount",      "business_name": "Allocated Cost Amount",       "description": "Cost allocated to this item for this cost type.",                "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7, "field": "AllocationBy","business_name": "Allocation Method",           "description": "How cost is split across items.",                                 "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Q":"By Quantity","V":"By Volume","W":"By Weight","E":"Equal","T":"By Total"} }
+    ]
+  },
+  {
+    "table_name": "OCHH",
+    "business_name": "Cheque / Post-Dated Cheque (PDC) Register",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Tracks all cheques issued to vendors and received from customers, including post-dated cheques (PDC). Widely used in India for PDC management. Enables cash flow forecasting based on cheque due dates.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 22,
+    "primary_key": { "columns": ["CheckKey"], "confidence": 0.95, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OCRD", "to_business_name": "Business Partner", "from_column": "CardCode",  "to_column": "CardCode",  "on_clause": "OCHH.CardCode = OCRD.CardCode",   "join_type": "LEFT", "purpose": "Get customer/vendor name for this cheque",              "confidence": 0.92 },
+      { "to_table": "ORCT", "to_business_name": "Incoming Payment", "from_column": "DocEntry",  "to_column": "DocEntry",  "on_clause": "OCHH.DocEntry = ORCT.DocEntry",   "join_type": "LEFT", "purpose": "Link customer cheque to the incoming payment receipt",  "confidence": 0.85 },
+      { "to_table": "OVPM", "to_business_name": "Outgoing Payment", "from_column": "DocEntry",  "to_column": "DocEntry",  "on_clause": "OCHH.DocEntry = OVPM.DocEntry",   "join_type": "LEFT", "purpose": "Link vendor cheque to the outgoing payment",           "confidence": 0.85 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "CheckKey",   "business_name": "Cheque Register ID (Internal Key)", "description": "Unique key for each cheque entry in the register. PK.",               "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "CheckNum",   "business_name": "Cheque Number",                     "description": "Printed cheque number on the physical instrument.",                   "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "CardCode",   "business_name": "Business Partner Code",             "description": "Customer (received from) or vendor (issued to). FK to OCRD.",        "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": true,  "references": {"table":"OCRD","business_name":"Business Partner","column":"CardCode","confidence":0.92} },
+      { "column_number": 4,  "field": "CardName",   "business_name": "Business Partner Name",             "description": "Name of the customer or vendor.",                                    "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "CheckDate",  "business_name": "Cheque Date",                       "description": "Date printed on the cheque (may be future for PDC).",               "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "DueDate",    "business_name": "Cheque Due Date (PDC Date)",        "description": "Date the cheque should be presented to the bank (PDC maturity date).", "type": "Date",    "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "CheckSum",   "business_name": "Cheque Amount",                     "description": "Amount on the cheque.",                                              "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "CheckAcc",   "business_name": "Bank Account Number",               "description": "Bank account the cheque is drawn on.",                              "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "BankCode",   "business_name": "Bank Code",                         "description": "Bank where the cheque is drawn.",                                   "type": "nVarChar", "length": 5,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "Branch",     "business_name": "Bank Branch",                       "description": "Branch of the bank.",                                               "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 11, "field": "CheckStatus","business_name": "Cheque Status",                      "description": "Current status of the cheque.",                                     "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"O":"Open / Outstanding","D":"Deposited","C":"Cleared","B":"Bounced","V":"Void","P":"Presented"} },
+      { "column_number": 12, "field": "CountrCode", "business_name": "Country",                           "description": "Country where the cheque is drawn.",                                "type": "nVarChar", "length": 3,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 13, "field": "DocEntry",   "business_name": "Source Payment Document ID",        "description": "DocEntry of the ORCT/OVPM this cheque belongs to.",                 "type": "Int",      "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 14, "field": "CheckType",  "business_name": "Cheque Type",                       "description": "Whether cheque is from a customer or to a vendor.",                 "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"R":"Received (Customer)","P":"Paid (Vendor)"} }
+    ]
+  }
+]

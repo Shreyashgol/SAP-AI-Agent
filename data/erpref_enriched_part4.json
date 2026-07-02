@@ -1,0 +1,142 @@
+[
+  {
+    "table_name": "OCRD",
+    "business_name": "Business Partner Master Data (Customer / Vendor)",
+    "module": "Business Partners",
+    "module_id": 6,
+    "description": "Master table for all customers and vendors. CardType distinguishes customers (C), vendors (S), and leads (L). This is the most-joined table in the entire SAP B1 schema — virtually every sales and purchasing document points here.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 60,
+    "primary_key": { "columns": ["CardCode"], "confidence": 0.99, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "CRD1", "to_business_name": "Business Partner Addresses",     "from_column": "CardCode", "to_column": "CardCode", "on_clause": "OCRD.CardCode = CRD1.CardCode", "join_type": "LEFT", "purpose": "Get billing, shipping, and other addresses",        "confidence": 0.99 },
+      { "to_table": "CRD2", "to_business_name": "Business Partner Bank Accounts", "from_column": "CardCode", "to_column": "CardCode", "on_clause": "OCRD.CardCode = CRD2.CardCode", "join_type": "LEFT", "purpose": "Get vendor bank accounts for payment processing",   "confidence": 0.99 },
+      { "to_table": "OCPR", "to_business_name": "Business Partner Contacts",      "from_column": "CardCode", "to_column": "CardCode", "on_clause": "OCRD.CardCode = OCPR.CardCode", "join_type": "LEFT", "purpose": "Get contact person details for this BP",           "confidence": 0.99 },
+      { "to_table": "OCRG", "to_business_name": "Business Partner Group",         "from_column": "GroupCode","to_column": "GroupCode","on_clause": "OCRD.GroupCode = OCRG.GroupCode","join_type": "LEFT", "purpose": "Get business partner group/category name",         "confidence": 0.95 },
+      { "to_table": "OINV", "to_business_name": "A/R Invoice",                    "from_column": "CardCode", "to_column": "CardCode", "on_clause": "OCRD.CardCode = OINV.CardCode",  "join_type": "LEFT", "purpose": "Get all sales invoices for this customer",          "confidence": 0.95 },
+      { "to_table": "OPCH", "to_business_name": "A/P Invoice",                    "from_column": "CardCode", "to_column": "CardCode", "on_clause": "OCRD.CardCode = OPCH.CardCode",  "join_type": "LEFT", "purpose": "Get all purchase invoices for this vendor",         "confidence": 0.95 },
+      { "to_table": "OSLP", "to_business_name": "Sales Employee",                 "from_column": "SlpCode",  "to_column": "SlpCode",  "on_clause": "OCRD.SlpCode = OSLP.SlpCode",   "join_type": "LEFT", "purpose": "Get the account manager for this customer",        "confidence": 0.90 },
+      { "to_table": "OPLN", "to_business_name": "Price List",                     "from_column": "ListNum",  "to_column": "ListNum",  "on_clause": "OCRD.ListNum = OPLN.ListNum",   "join_type": "LEFT", "purpose": "Get pricing tier assigned to this customer",       "confidence": 0.88 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "CardCode",   "business_name": "Business Partner Code",          "description": "Unique identifier for customer/vendor. PK and FK target across entire system.", "type": "nVarChar", "length": 15, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "CardName",   "business_name": "Business Partner Name",          "description": "Full name of the customer, vendor, or lead.",                                   "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "CardType",   "business_name": "Business Partner Type",          "description": "Distinguishes customer, vendor, and lead.",                                      "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"C":"Customer","S":"Vendor/Supplier","L":"Lead"} },
+      { "column_number": 4,  "field": "GroupCode",  "business_name": "Business Partner Group",         "description": "Customer/vendor group for segmentation and reporting. FK to OCRG.",            "type": "Int",      "length": 6,  "is_pk": false, "is_fk": true,  "references": {"table":"OCRG","business_name":"Business Partner Group","column":"GroupCode","confidence":0.95} },
+      { "column_number": 5,  "field": "CmpPrivate", "business_name": "Company or Individual",          "description": "Whether this BP is a company or an individual.",                                "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"C":"Company","I":"Individual"} },
+      { "column_number": 6,  "field": "Phone1",     "business_name": "Primary Phone Number",           "description": "Main phone number.",                                                           "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "Phone2",     "business_name": "Secondary Phone Number",         "description": "Alternate phone number.",                                                      "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "Fax",        "business_name": "Fax Number",                     "description": "Fax number for the BP.",                                                       "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "E_Mail",     "business_name": "Email Address",                  "description": "Primary email address.",                                                       "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "Website",    "business_name": "Website URL",                    "description": "Company website.",                                                             "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 11, "field": "SlpCode",    "business_name": "Account Manager / Sales Rep",    "description": "Default sales employee for this BP. FK to OSLP.",                              "type": "Int",      "length": 6,  "is_pk": false, "is_fk": true,  "references": {"table":"OSLP","business_name":"Sales Employee","column":"SlpCode","confidence":0.90} },
+      { "column_number": 12, "field": "ListNum",    "business_name": "Price List Number",              "description": "Default price list used for sales to this customer. FK to OPLN.",             "type": "Int",      "length": 6,  "is_pk": false, "is_fk": true,  "references": {"table":"OPLN","business_name":"Price List","column":"ListNum","confidence":0.88} },
+      { "column_number": 13, "field": "PymntGroup", "business_name": "Payment Terms",                  "description": "Default payment terms (e.g. Net 30, Net 60).",                                "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 14, "field": "IntStat",    "business_name": "BP Account Status",              "description": "Account status for this business partner.",                                    "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"A":"Active","I":"Inactive","F":"Frozen"} },
+      { "column_number": 15, "field": "Balance",    "business_name": "Outstanding Balance",            "description": "Current outstanding balance (receivable or payable). Positive = owed to company.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 16, "field": "DNotesBal",  "business_name": "Delivery Note Balance",          "description": "Value of open delivery notes not yet invoiced.",                               "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 17, "field": "OrdersBal",  "business_name": "Open Sales Order Value",         "description": "Total value of open orders not yet delivered.",                                "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 18, "field": "CreditLine", "business_name": "Credit Limit",                   "description": "Maximum credit extended to this customer.",                                    "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 19, "field": "Currency",   "business_name": "BP Default Currency",            "description": "Default transaction currency for this BP.",                                    "type": "nVarChar", "length": 3,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 20, "field": "TaxStatus",  "business_name": "Tax Status / GST Type",          "description": "Tax classification of this BP (useful for GST reporting).",                   "type": "nVarChar", "length": 1,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 21, "field": "LicTradNum", "business_name": "GST / VAT Registration Number",  "description": "Tax registration number (GSTIN in India).",                                   "type": "nVarChar", "length": 32, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 22, "field": "PanNum",     "business_name": "PAN Number (India)",              "description": "Permanent Account Number for Indian TDS compliance.",                          "type": "nVarChar", "length": 10, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 23, "field": "CreateDate", "business_name": "Account Created Date",           "description": "Date this BP was created in the system.",                                      "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 24, "field": "UpdateDate", "business_name": "Last Updated Date",              "description": "Date this BP record was last modified.",                                       "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 25, "field": "City",       "business_name": "City",                           "description": "City of the BP's primary address.",                                           "type": "nVarChar", "length": 25, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 26, "field": "Country",    "business_name": "Country",                        "description": "Country of the BP's primary address.",                                        "type": "nVarChar", "length": 3,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 27, "field": "State1",     "business_name": "State / Province",               "description": "State of the primary billing address.",                                       "type": "nVarChar", "length": 3,  "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "CRD1",
+    "business_name": "Business Partner Addresses",
+    "module": "Business Partners",
+    "module_id": 6,
+    "description": "All billing, shipping, and other addresses for a business partner. A BP can have multiple addresses of each type.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 20,
+    "primary_key": { "columns": ["CardCode","AdresType","Address"], "confidence": 0.92, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OCRD", "to_business_name": "Business Partner Master", "from_column": "CardCode", "to_column": "CardCode", "on_clause": "CRD1.CardCode = OCRD.CardCode", "join_type": "LEFT", "purpose": "Get BP name and type for this address", "confidence": 0.99 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "CardCode",  "business_name": "Business Partner Code",  "description": "FK to OCRD.CardCode.", "type": "nVarChar", "length": 15, "is_pk": true,  "is_fk": true,  "references": {"table":"OCRD","business_name":"Business Partner","column":"CardCode","confidence":0.99} },
+      { "column_number": 2,  "field": "AdresType", "business_name": "Address Type",           "description": "Type of address.",                          "type": "Char",     "length": 1,  "is_pk": true,  "is_fk": false, "references": null, "enum_values": {"B":"Billing","S":"Ship-To"} },
+      { "column_number": 3,  "field": "Address",   "business_name": "Address Name / Code",   "description": "Logical name/code of this address.",         "type": "nVarChar", "length": 50, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 4,  "field": "Street",    "business_name": "Street",                "description": "Street line 1.",                             "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "Block",     "business_name": "Street 2 / Block",      "description": "Street line 2 / block.",                     "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "City",      "business_name": "City",                  "description": "City.",                                      "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "ZipCode",   "business_name": "Postal / Zip Code",     "description": "Postal / pin code.",                         "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "State",     "business_name": "State / Province",      "description": "State — used for GST state-based reporting.", "type": "nVarChar", "length": 3,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "Country",   "business_name": "Country",               "description": "Country.",                                   "type": "nVarChar", "length": 3,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "GstTaxType","business_name": "GST State Code",        "description": "GST state classification for this address (relevant for Indian GST).", "type": "nVarChar", "length": 3, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "CRD2",
+    "business_name": "Business Partner Bank Accounts",
+    "module": "Business Partners",
+    "module_id": 6,
+    "description": "Bank account details for business partners — used for vendor payment processing (NEFT, RTGS, cheque).",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 15,
+    "primary_key": { "columns": ["CardCode","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OCRD", "to_business_name": "Business Partner Master", "from_column": "CardCode", "to_column": "CardCode", "on_clause": "CRD2.CardCode = OCRD.CardCode", "join_type": "LEFT", "purpose": "Get BP name and type for this bank account", "confidence": 0.99 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "CardCode",    "business_name": "Business Partner Code",  "description": "FK to OCRD.CardCode.",                     "type": "nVarChar", "length": 15, "is_pk": true,  "is_fk": true,  "references": {"table":"OCRD","business_name":"Business Partner","column":"CardCode","confidence":0.99} },
+      { "column_number": 2,  "field": "LineNum",     "business_name": "Bank Account Line",      "description": "Sequence number for multiple bank accounts.", "type": "Int",      "length": 6,  "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "BankCode",    "business_name": "Bank Code",              "description": "Code of the bank.",                          "type": "nVarChar", "length": 30, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4,  "field": "Branch",      "business_name": "Bank Branch",            "description": "Branch name or code.",                       "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "Account",     "business_name": "Bank Account Number",    "description": "Bank account number.",                       "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "IFSC",        "business_name": "IFSC Code",              "description": "Indian bank IFSC code for NEFT/RTGS.",       "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "AcctName",    "business_name": "Account Holder Name",    "description": "Name of the account holder.",                "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OCPR",
+    "business_name": "Business Partner Contact Persons",
+    "module": "Business Partners",
+    "module_id": 6,
+    "description": "Contact persons associated with a business partner. A BP can have multiple contacts for different roles (sales, accounts, logistics).",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 20,
+    "primary_key": { "columns": ["CntctCode"], "confidence": 0.95, "rule": "document_header" },
+    "joins": [
+      { "to_table": "OCRD", "to_business_name": "Business Partner Master", "from_column": "CardCode", "to_column": "CardCode", "on_clause": "OCPR.CardCode = OCRD.CardCode", "join_type": "LEFT", "purpose": "Get the BP this contact belongs to", "confidence": 0.99 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "CntctCode",  "business_name": "Contact Person Internal ID",  "description": "Unique internal ID for each contact person.",        "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "CardCode",   "business_name": "Business Partner Code",       "description": "FK to OCRD — the BP this contact belongs to.",       "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": true,  "references": {"table":"OCRD","business_name":"Business Partner","column":"CardCode","confidence":0.99} },
+      { "column_number": 3,  "field": "Name",       "business_name": "Contact Full Name",           "description": "Full name of the contact person.",                  "type": "nVarChar", "length": 155,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4,  "field": "FirstName",  "business_name": "First Name",                  "description": "First name of the contact.",                         "type": "nVarChar", "length": 32, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "LastName",   "business_name": "Last Name",                   "description": "Last name of the contact.",                          "type": "nVarChar", "length": 32, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "Position",   "business_name": "Job Title / Position",        "description": "Contact person's job role.",                         "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "Tel1",       "business_name": "Primary Telephone",           "description": "Main phone number of the contact.",                 "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "Tel2",       "business_name": "Secondary Telephone",         "description": "Alternate phone number.",                            "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "Cellolar",   "business_name": "Mobile Number",               "description": "Mobile / cell number of the contact.",              "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "E_Mail",     "business_name": "Email Address",               "description": "Email of the contact person.",                       "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 11, "field": "Active",     "business_name": "Active Status",               "description": "Whether this contact is currently active.",          "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Y":"Active","N":"Inactive"} }
+    ]
+  },
+  {
+    "table_name": "OCRG",
+    "business_name": "Business Partner Group / Category",
+    "module": "Business Partners",
+    "module_id": 6,
+    "description": "Lookup table for business partner groupings (e.g. Retail Customers, Wholesale Customers, Local Vendors, Import Vendors). Used for segmentation and reporting.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 5,
+    "primary_key": { "columns": ["GroupCode"], "confidence": 0.98, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OCRD", "to_business_name": "Business Partner Master", "from_column": "GroupCode", "to_column": "GroupCode", "on_clause": "OCRG.GroupCode = OCRD.GroupCode", "join_type": "LEFT", "purpose": "Get all BPs in this group", "confidence": 0.95 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "GroupCode", "business_name": "Group Code",        "description": "Unique code for the BP group. PK and FK target in OCRD.", "type": "Int",      "length": 6,   "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "GroupName", "business_name": "Group Name",        "description": "Human-readable name of the group (e.g. Retail, Wholesale, Export).", "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "GroupType", "business_name": "Group Type",        "description": "Whether the group is for customers, vendors, or leads.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"C":"Customer Group","S":"Vendor Group","L":"Lead Group"} }
+    ]
+  }
+]

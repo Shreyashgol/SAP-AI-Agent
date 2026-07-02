@@ -1,0 +1,526 @@
+[
+  {
+    "table_name": "OUSR",
+    "business_name": "User Master Data (System Users)",
+    "module": "Administration",
+    "module_id": 9,
+    "description": "Master table of all SAP B1 system users. Every document has a UserSign field referencing this table — used for audit trails, productivity reports, and access-level analysis.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 18,
+    "primary_key": { "columns": ["USERID"], "confidence": 0.99, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OINV", "to_business_name": "A/R Invoice",    "from_column": "USERID", "to_column": "UserSign", "on_clause": "OUSR.USERID = OINV.UserSign", "join_type": "LEFT", "purpose": "Get who created each AR invoice",     "confidence": 0.88 },
+      { "to_table": "OPCH", "to_business_name": "A/P Invoice",    "from_column": "USERID", "to_column": "UserSign", "on_clause": "OUSR.USERID = OPCH.UserSign", "join_type": "LEFT", "purpose": "Get who created each AP invoice",     "confidence": 0.88 },
+      { "to_table": "OJDT", "to_business_name": "Journal Entry",  "from_column": "USERID", "to_column": "UserSign", "on_clause": "OUSR.USERID = OJDT.UserSign", "join_type": "LEFT", "purpose": "Get who posted each journal entry",  "confidence": 0.88 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "USERID",     "business_name": "User ID (Internal Key)",    "description": "Unique numeric user ID. PK and FK target in all documents via UserSign.",             "type": "Int",      "length": 6,   "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "USER_CODE",  "business_name": "Login Username",            "description": "User's login name used to sign in to SAP B1.",                                        "type": "nVarChar", "length": 10,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "U_NAME",     "business_name": "Full Name",                 "description": "User's full display name.",                                                            "type": "nVarChar", "length": 50,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4,  "field": "E_Mail",     "business_name": "Email Address",             "description": "User's email address.",                                                                "type": "nVarChar", "length": 100, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "Fax",        "business_name": "Phone / Extension",         "description": "User's office phone or extension.",                                                   "type": "nVarChar", "length": 20,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "Dept",       "business_name": "Department",                "description": "Department the user belongs to. FK to OUDP.",                                         "type": "Int",      "length": 6,   "is_pk": false, "is_fk": true,  "references": {"table":"OUDP","business_name":"Department","column":"Code","confidence":0.85} },
+      { "column_number": 7,  "field": "Locked",     "business_name": "Account Locked Status",     "description": "Y if user account is locked / deactivated.",                                          "type": "Char",     "length": 1,   "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Y":"Locked","N":"Active"} },
+      { "column_number": 8,  "field": "SuperUser",  "business_name": "Is Super User / Admin",     "description": "Y if this user has full system administrator rights.",                                "type": "Char",     "length": 1,   "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Y":"Superuser","N":"Standard User"} },
+      { "column_number": 9,  "field": "Branch",     "business_name": "Default Branch",            "description": "Default branch this user operates from.",                                             "type": "Int",      "length": 6,   "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "MobilePhon", "business_name": "Mobile Number",             "description": "User's mobile number.",                                                               "type": "nVarChar", "length": 20,  "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OUDP",
+    "business_name": "Department Master Data",
+    "module": "Human Resources",
+    "module_id": 8,
+    "description": "Defines all company departments. Referenced by OHEM (employees) and OUSR (users). Needed to make department-level HR and cost reports meaningful — OHEM stores only a numeric dept code without this lookup.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 5,
+    "primary_key": { "columns": ["Code"], "confidence": 0.99, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OHEM", "to_business_name": "Employee Master", "from_column": "Code", "to_column": "dept", "on_clause": "OUDP.Code = OHEM.dept", "join_type": "LEFT", "purpose": "Get all employees in this department", "confidence": 0.95 },
+      { "to_table": "OUSR", "to_business_name": "User Master",     "from_column": "Code", "to_column": "Dept", "on_clause": "OUDP.Code = OUSR.Dept", "join_type": "LEFT", "purpose": "Get all users in this department",     "confidence": 0.88 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "Code",   "business_name": "Department Code", "description": "Unique department code. PK and FK target in OHEM and OUSR.", "type": "Int",      "length": 6,  "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "Name",   "business_name": "Department Name", "description": "Full department name (e.g. Sales, Finance, Operations, Procurement).", "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "Remarks","business_name": "Remarks",         "description": "Free-text notes about this department.", "type": "nVarChar", "length": 200, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OUBR",
+    "business_name": "Branch Master Data (HR Branch / Location)",
+    "module": "Human Resources",
+    "module_id": 8,
+    "description": "Defines company branches/locations for HR purposes. Referenced by OHEM.branch to assign employees to physical locations. Different from OBPL (which is for GST registration) — this is purely for HR org structure.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 5,
+    "primary_key": { "columns": ["Code"], "confidence": 0.99, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OHEM", "to_business_name": "Employee Master", "from_column": "Code", "to_column": "branch", "on_clause": "OUBR.Code = OHEM.branch", "join_type": "LEFT", "purpose": "Get all employees at this branch", "confidence": 0.92 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "Code",   "business_name": "Branch Code", "description": "Unique HR branch code. PK and FK in OHEM.", "type": "Int",      "length": 6,  "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "Name",   "business_name": "Branch Name", "description": "Full branch name (e.g. Mumbai HO, Delhi Branch, Chennai Plant).", "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "Remarks","business_name": "Remarks",     "description": "Notes about this branch.", "type": "nVarChar", "length": 200, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OBGT",
+    "business_name": "Budget Scenario Master",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Defines budget scenarios (e.g. FY2025 Budget, FY2025 Revised). Each scenario holds a complete set of budget lines in BGT1. Enables budget vs actual analysis across the GL.",
+    "is_master": true, "is_header": true, "is_line": false,
+    "total_columns": 12,
+    "primary_key": { "columns": ["AbsId"], "confidence": 0.97, "rule": "document_header" },
+    "joins": [
+      { "to_table": "BGT1", "to_business_name": "Budget Lines", "from_column": "AbsId", "to_column": "Scenario", "on_clause": "OBGT.AbsId = BGT1.Scenario", "join_type": "LEFT", "purpose": "Get all GL account budget amounts for this scenario", "confidence": 0.99 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "AbsId",       "business_name": "Budget Scenario ID",          "description": "Unique internal ID for this budget scenario. PK. FK target in BGT1.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "Name",        "business_name": "Budget Scenario Name",        "description": "Name of the budget (e.g. Annual Budget 2025, Revised Budget Q3).",   "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "FiscalYear",  "business_name": "Financial Year",              "description": "Financial year this budget applies to.",                              "type": "Int",      "length": 4,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4, "field": "InitBal",     "business_name": "Include Opening Balance",     "description": "Y if opening balance is included in budget calculations.",            "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Y":"Include Opening Balance","N":"Exclude"} },
+      { "column_number": 5, "field": "Remarks",     "business_name": "Remarks",                     "description": "Description or notes about this budget scenario.",                    "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "BGT1",
+    "business_name": "Budget Lines (GL Account Budget Amounts per Period)",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Stores budgeted amounts per GL account per period per budget scenario. The primary table for budget vs actual reporting. Join with OACT for account names and with JDT1 actuals for variance analysis.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 20,
+    "primary_key": { "columns": ["Scenario","AcctCode","Dimension"], "confidence": 0.92, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OBGT", "to_business_name": "Budget Scenario",   "from_column": "Scenario", "to_column": "AbsId",    "on_clause": "BGT1.Scenario = OBGT.AbsId",    "join_type": "LEFT", "purpose": "Get budget scenario name and fiscal year",       "confidence": 0.99 },
+      { "to_table": "OACT", "to_business_name": "Chart of Accounts", "from_column": "AcctCode", "to_column": "AcctCode", "on_clause": "BGT1.AcctCode = OACT.AcctCode", "join_type": "LEFT", "purpose": "Get GL account name for budget vs actual reports", "confidence": 0.97 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "Scenario",    "business_name": "Budget Scenario ID",         "description": "FK to OBGT.AbsId. Composite PK.",                                      "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"OBGT","business_name":"Budget Scenario","column":"AbsId","confidence":0.99} },
+      { "column_number": 2,  "field": "AcctCode",    "business_name": "GL Account Code",            "description": "FK to OACT.AcctCode. Composite PK.",                                   "type": "nVarChar", "length": 15, "is_pk": true,  "is_fk": true,  "references": {"table":"OACT","business_name":"Chart of Accounts","column":"AcctCode","confidence":0.97} },
+      { "column_number": 3,  "field": "Dimension",   "business_name": "Cost Dimension",             "description": "Distribution dimension (cost centre). Composite PK.",                  "type": "Int",      "length": 6,  "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 4,  "field": "Jan",         "business_name": "January Budget",             "description": "Budgeted amount for January.",                                         "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "Feb",         "business_name": "February Budget",            "description": "Budgeted amount for February.",                                        "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "Mar",         "business_name": "March Budget",               "description": "Budgeted amount for March.",                                           "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "Apr",         "business_name": "April Budget",               "description": "Budgeted amount for April.",                                           "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "May",         "business_name": "May Budget",                 "description": "Budgeted amount for May.",                                             "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "Jun",         "business_name": "June Budget",                "description": "Budgeted amount for June.",                                            "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "Jul",         "business_name": "July Budget",                "description": "Budgeted amount for July.",                                            "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 11, "field": "Aug",         "business_name": "August Budget",              "description": "Budgeted amount for August.",                                          "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 12, "field": "Sep",         "business_name": "September Budget",           "description": "Budgeted amount for September.",                                       "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 13, "field": "Oct",         "business_name": "October Budget",             "description": "Budgeted amount for October.",                                         "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 14, "field": "Nov",         "business_name": "November Budget",            "description": "Budgeted amount for November.",                                        "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 15, "field": "Dec",         "business_name": "December Budget",            "description": "Budgeted amount for December.",                                        "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 16, "field": "TotalBudget", "business_name": "Full Year Budget Total",     "description": "Sum of all monthly budget amounts for this account.",                 "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OSCL",
+    "business_name": "Service Call (Customer Service Request)",
+    "module": "Service",
+    "module_id": 10,
+    "description": "Header for each customer service call — complaint, repair request, AMC visit, or technical support. Tracks status, priority, SLA, assigned technician, and resolution. Key for service analytics: TAT, SLA breach, technician productivity.",
+    "is_master": true, "is_header": true, "is_line": false,
+    "total_columns": 35,
+    "primary_key": { "columns": ["DocEntry"], "confidence": 0.90, "rule": "document_header" },
+    "joins": [
+      { "to_table": "SCL1", "to_business_name": "Service Call Activities",     "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "OSCL.DocEntry = SCL1.DocEntry", "join_type": "LEFT", "purpose": "Get work done, parts used, time spent on this service call",   "confidence": 0.99 },
+      { "to_table": "OCRD", "to_business_name": "Business Partner (Customer)", "from_column": "CardCode", "to_column": "CardCode", "on_clause": "OSCL.CardCode = OCRD.CardCode",  "join_type": "LEFT", "purpose": "Get customer name and contact details for service call",     "confidence": 0.95 },
+      { "to_table": "OHEM", "to_business_name": "Technician (Employee)",       "from_column": "TechnicnCode","to_column":"empID",   "on_clause": "OSCL.TechnicnCode = OHEM.empID","join_type": "LEFT", "purpose": "Get technician assigned to this service call",              "confidence": 0.88 },
+      { "to_table": "OITM", "to_business_name": "Item Under Service",          "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "OSCL.ItemCode = OITM.ItemCode",  "join_type": "LEFT", "purpose": "Get the product/item the service call is about",           "confidence": 0.90 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "DocEntry",     "business_name": "Service Call Internal ID",   "description": "Unique system key for this service call. FK target in SCL1.",            "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "DocNum",       "business_name": "Service Call Number",        "description": "User-facing sequential service call number.",                            "type": "Int",      "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "CardCode",     "business_name": "Customer Code",              "description": "Customer who raised this service call. FK to OCRD.",                    "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": true,  "references": {"table":"OCRD","business_name":"Business Partner","column":"CardCode","confidence":0.95} },
+      { "column_number": 4,  "field": "CardName",     "business_name": "Customer Name",              "description": "Customer name for this service call.",                                  "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "ItemCode",     "business_name": "Item / Product Code",        "description": "Item the service call is raised for. FK to OITM.",                     "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": true,  "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.90} },
+      { "column_number": 6,  "field": "Status",       "business_name": "Service Call Status",        "description": "Current status of the service call.",                                  "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"O":"Open","P":"Pending","C":"Closed"} },
+      { "column_number": 7,  "field": "Priority",     "business_name": "Priority",                   "description": "Urgency level of this service call.",                                  "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"L":"Low","M":"Medium","H":"High","U":"Urgent"} },
+      { "column_number": 8,  "field": "CallType",     "business_name": "Service Call Type",          "description": "Type of service — complaint, repair, preventive, installation.",       "type": "Int",      "length": 6,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "CreateDate",   "business_name": "Call Opened Date",           "description": "Date the service call was registered.",                                "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "CloseDate",    "business_name": "Call Closed Date",           "description": "Date the service call was resolved and closed.",                       "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 11, "field": "TechnicnCode", "business_name": "Assigned Technician ID",     "description": "Employee assigned to resolve this call. FK to OHEM.",                  "type": "Int",      "length": 11, "is_pk": false, "is_fk": true,  "references": {"table":"OHEM","business_name":"Employee Master","column":"empID","confidence":0.88} },
+      { "column_number": 12, "field": "MnfSN",        "business_name": "Item Serial Number",         "description": "Serial number of the specific unit under service. FK to OSRN.",       "type": "nVarChar", "length": 32, "is_pk": false, "is_fk": true,  "references": {"table":"OSRN","business_name":"Serial Number Master","column":"MnfSerial","confidence":0.82} },
+      { "column_number": 13, "field": "descrption",   "business_name": "Problem Description",        "description": "Description of the issue/complaint reported by customer.",             "type": "nVarChar", "length": 254,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 14, "field": "Resolution",   "business_name": "Resolution Details",         "description": "How the issue was resolved.",                                          "type": "nVarChar", "length": 254,"is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "SCL1",
+    "business_name": "Service Call Activity Lines (Work Done / Parts Used)",
+    "module": "Service",
+    "module_id": 10,
+    "description": "Each row is one activity logged against a service call — technician visit, part replaced, time spent. Used for service cost analysis and SLA tracking.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 18,
+    "primary_key": { "columns": ["DocEntry","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OSCL", "to_business_name": "Service Call Header",  "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "SCL1.DocEntry = OSCL.DocEntry", "join_type": "LEFT", "purpose": "Get service call header — customer, item, status", "confidence": 0.99 },
+      { "to_table": "OITM", "to_business_name": "Spare Part / Item",    "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "SCL1.ItemCode = OITM.ItemCode", "join_type": "LEFT", "purpose": "Get spare part details used in service",          "confidence": 0.90 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",   "business_name": "Service Call Internal ID", "description": "FK to OSCL.DocEntry.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"OSCL","business_name":"Service Call","column":"DocEntry","confidence":0.99} },
+      { "column_number": 2, "field": "LineNum",    "business_name": "Activity Line Number",     "description": "Sequential line number.", "type": "Int", "length": 6, "is_pk": true, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "LineType",   "business_name": "Activity Type",            "description": "Type of activity logged.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"I":"Item/Part Used","L":"Labour/Time","G":"General Expense","R":"Travel"} },
+      { "column_number": 4, "field": "ItemCode",   "business_name": "Spare Part / Item Code",  "description": "Part used during service. FK to OITM.", "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": true, "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.90} },
+      { "column_number": 5, "field": "Quantity",   "business_name": "Quantity Used",           "description": "Quantity of spare part or hours of labour.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "Price",      "business_name": "Unit Price / Labour Rate","description": "Cost per unit or per hour.", "type": "Price", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7, "field": "LineTotal",  "business_name": "Line Total Cost",         "description": "Total cost of this activity (Qty × Price).", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8, "field": "ActDate",    "business_name": "Activity Date",           "description": "Date this activity was performed.", "type": "Date", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9, "field": "Remarks",    "business_name": "Activity Remarks",        "description": "Notes on what was done during this activity.", "type": "nVarChar", "length": 254, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OOPR",
+    "business_name": "Sales Opportunity (CRM Pipeline)",
+    "module": "CRM",
+    "module_id": 11,
+    "description": "Tracks sales opportunities / deals in the CRM pipeline. Each row is one potential deal — customer, estimated value, stage, close date, probability. Foundation for sales pipeline and forecast reports.",
+    "is_master": true, "is_header": true, "is_line": false,
+    "total_columns": 30,
+    "primary_key": { "columns": ["OpprId"], "confidence": 0.97, "rule": "document_header" },
+    "joins": [
+      { "to_table": "OPR1", "to_business_name": "Opportunity Lines (Products)",  "from_column": "OpprId",   "to_column": "OpprId",   "on_clause": "OOPR.OpprId = OPR1.OpprId",     "join_type": "LEFT", "purpose": "Get products/services in this opportunity",        "confidence": 0.99 },
+      { "to_table": "OCRD", "to_business_name": "Business Partner (Lead/Cust)", "from_column": "CardCode", "to_column": "CardCode", "on_clause": "OOPR.CardCode = OCRD.CardCode",  "join_type": "LEFT", "purpose": "Get the prospect or customer for this opportunity", "confidence": 0.95 },
+      { "to_table": "OSLP", "to_business_name": "Sales Employee",               "from_column": "SlpCode",  "to_column": "SlpCode",  "on_clause": "OOPR.SlpCode = OSLP.SlpCode",   "join_type": "LEFT", "purpose": "Get the salesperson owning this opportunity",      "confidence": 0.90 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "OpprId",      "business_name": "Opportunity Internal ID",     "description": "Unique system key for this opportunity. PK. FK in OPR1.",               "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "Name",        "business_name": "Opportunity Name / Deal Name","description": "Name or title of this sales opportunity.",                               "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "CardCode",    "business_name": "Prospect / Customer Code",    "description": "Lead or customer this opportunity is with. FK to OCRD.",                "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": true,  "references": {"table":"OCRD","business_name":"Business Partner","column":"CardCode","confidence":0.95} },
+      { "column_number": 4,  "field": "CardName",    "business_name": "Prospect / Customer Name",    "description": "Name of the prospect or customer.",                                     "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "SlpCode",     "business_name": "Sales Representative Code",   "description": "Sales rep responsible for this opportunity. FK to OSLP.",               "type": "Int",      "length": 6,  "is_pk": false, "is_fk": true,  "references": {"table":"OSLP","business_name":"Sales Employee","column":"SlpCode","confidence":0.90} },
+      { "column_number": 6,  "field": "Status",      "business_name": "Opportunity Status",          "description": "Current status of the sales opportunity.",                               "type": "Char",     "length": 1,  "is_pk": false, "is_fk": false, "references": null, "enum_values": {"O":"Open","W":"Won","L":"Lost"} },
+      { "column_number": 7,  "field": "StepId",      "business_name": "Sales Stage",                 "description": "Current stage in the sales pipeline (numeric ID of the stage).",       "type": "Int",      "length": 6,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "ClsDate",     "business_name": "Expected Close Date",         "description": "Date the deal is expected to be won or lost.",                         "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "OpenDate",    "business_name": "Opportunity Opened Date",     "description": "Date this opportunity was created.",                                    "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "MaxSumLoc",   "business_name": "Potential Deal Value (Local Currency)", "description": "Maximum potential revenue from this deal.",               "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 11, "field": "WtSumLoc",    "business_name": "Weighted Pipeline Value",     "description": "MaxSumLoc × Probability — used in weighted pipeline reports.",        "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 12, "field": "Probability", "business_name": "Win Probability (%)",         "description": "Estimated probability of winning this deal (0–100).",                  "type": "Rate",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 13, "field": "Industry",    "business_name": "Industry / Segment",          "description": "Industry or market segment of the prospect.",                          "type": "Int",      "length": 6,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 14, "field": "Memo",        "business_name": "Notes / Remarks",             "description": "Free-text notes on this opportunity.",                                 "type": "nVarChar", "length": 254,"is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OPR1",
+    "business_name": "Opportunity Lines (Products in Pipeline Deal)",
+    "module": "CRM",
+    "module_id": 11,
+    "description": "Products and services included in a sales opportunity. Each line is one item the prospect might buy. Used to forecast product-level demand from the pipeline.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 12,
+    "primary_key": { "columns": ["OpprId","Line"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OOPR", "to_business_name": "Sales Opportunity", "from_column": "OpprId",   "to_column": "OpprId",   "on_clause": "OPR1.OpprId = OOPR.OpprId",     "join_type": "LEFT", "purpose": "Get opportunity header — customer, stage, probability", "confidence": 0.99 },
+      { "to_table": "OITM", "to_business_name": "Item Master Data",  "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "OPR1.ItemCode = OITM.ItemCode", "join_type": "LEFT", "purpose": "Get product/item name and group",                       "confidence": 0.92 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "OpprId",    "business_name": "Opportunity Internal ID",   "description": "FK to OOPR.OpprId. Composite PK with Line.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"OOPR","business_name":"Sales Opportunity","column":"OpprId","confidence":0.99} },
+      { "column_number": 2, "field": "Line",      "business_name": "Line Number",               "description": "Sequential line number.", "type": "Int", "length": 6, "is_pk": true, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "ItemCode",  "business_name": "Product / Item Code",      "description": "Product being proposed. FK to OITM.", "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": true, "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.92} },
+      { "column_number": 4, "field": "Dscription","business_name": "Product Description",       "description": "Description of the product or service.", "type": "nVarChar", "length": 100, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "Quantity",  "business_name": "Estimated Quantity",        "description": "Expected quantity the prospect will buy.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "Price",     "business_name": "Proposed Unit Price",       "description": "Price being quoted for this product.", "type": "Price", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7, "field": "Total",     "business_name": "Line Total Value",          "description": "Estimated deal value for this product line.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OCTG",
+    "business_name": "Payment Terms Master Data",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Defines payment term codes used across business partners and documents (e.g. Net 30, Net 60, Immediate, 2% 10 Net 30). Controls due date calculation on invoices and receipts.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 15,
+    "primary_key": { "columns": ["GroupNum"], "confidence": 0.99, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OCRD", "to_business_name": "Business Partner", "from_column": "GroupNum", "to_column": "PymntGroup", "on_clause": "OCTG.PymntGroup = OCRD.PymntGroup", "join_type": "LEFT", "purpose": "Get all BPs with this payment term", "confidence": 0.82 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "GroupNum",    "business_name": "Payment Term Code",          "description": "Unique payment term code. PK.", "type": "Int",      "length": 6,  "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "PymntGroup",  "business_name": "Payment Terms Name",         "description": "Display name (e.g. Net 30, Immediate, 50% Advance).", "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "ExtraMonth",  "business_name": "Extra Months for Due Date",  "description": "Additional months added to invoice date for due date.", "type": "Int", "length": 3, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4, "field": "ExtraDays",   "business_name": "Extra Days for Due Date",    "description": "Additional days added for due date calculation.", "type": "Int", "length": 3, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "DiscPrcnt",   "business_name": "Early Payment Discount (%)", "description": "Discount percentage if paid within discount days.", "type": "Rate", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "DiscDays",    "business_name": "Discount Days",              "description": "Number of days from invoice date within which discount applies.", "type": "Int", "length": 3, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7, "field": "PymntType",   "business_name": "Due Date Basis",             "description": "How the due date is calculated.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"N":"Net Days","E":"End of Month","M":"End of Month + Days"} }
+    ]
+  },
+  {
+    "table_name": "OSPP",
+    "business_name": "Special Prices (BP-Specific Item Prices)",
+    "module": "Sales",
+    "module_id": 1,
+    "description": "Customer or vendor-specific price overrides for individual items. Overrides the standard price list (OPLN/ITM1) for a specific business partner. Enables contract pricing, special deals, and loyalty discounts.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 12,
+    "primary_key": { "columns": ["CardCode","ItemCode"], "confidence": 0.97, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OCRD", "to_business_name": "Business Partner", "from_column": "CardCode", "to_column": "CardCode", "on_clause": "OSPP.CardCode = OCRD.CardCode", "join_type": "LEFT", "purpose": "Get customer/vendor for whom the special price applies", "confidence": 0.97 },
+      { "to_table": "OITM", "to_business_name": "Item Master Data", "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "OSPP.ItemCode = OITM.ItemCode", "join_type": "LEFT", "purpose": "Get item name for the special price",                  "confidence": 0.97 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "CardCode",   "business_name": "Business Partner Code",         "description": "Customer/vendor this special price is for. Composite PK. FK to OCRD.", "type": "nVarChar", "length": 15, "is_pk": true,  "is_fk": true,  "references": {"table":"OCRD","business_name":"Business Partner","column":"CardCode","confidence":0.97} },
+      { "column_number": 2, "field": "ItemCode",   "business_name": "Item Code",                     "description": "Item with special price. Composite PK. FK to OITM.", "type": "nVarChar", "length": 20, "is_pk": true,  "is_fk": true,  "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.97} },
+      { "column_number": 3, "field": "Price",      "business_name": "Special Contract Price",        "description": "Agreed special price for this customer-item combination.", "type": "Price", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4, "field": "Currency",   "business_name": "Price Currency",                "description": "Currency of the special price.", "type": "nVarChar", "length": 3, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "DiscPrcnt",  "business_name": "Discount Percentage",          "description": "Discount % from the standard price list (alternative to fixed price).", "type": "Rate", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "FromDate",   "business_name": "Valid From Date",              "description": "Date from which this special price is effective.", "type": "Date", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7, "field": "ToDate",     "business_name": "Valid To Date",                "description": "Date until which this special price is valid.", "type": "Date", "length": 0, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OPYP",
+    "business_name": "Payment Method Master Data",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Defines payment methods used in outgoing and incoming payments — NEFT, RTGS, Cheque, Cash, UPI, DD. Referenced by OVPM and ORCT. Essential for payment mode analysis and bank reconciliation.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 12,
+    "primary_key": { "columns": ["PayMethCod"], "confidence": 0.99, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OVPM", "to_business_name": "Outgoing Payment", "from_column": "PayMethCod", "to_column": "PaymentMethod", "on_clause": "OPYP.PayMethCod = OVPM.PaymentMethod", "join_type": "LEFT", "purpose": "Get all vendor payments made via this method", "confidence": 0.85 },
+      { "to_table": "ORCT", "to_business_name": "Incoming Payment", "from_column": "PayMethCod", "to_column": "PaymentMethod", "on_clause": "OPYP.PayMethCod = ORCT.PaymentMethod", "join_type": "LEFT", "purpose": "Get all receipts received via this method",  "confidence": 0.85 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "PayMethCod", "business_name": "Payment Method Code",     "description": "Unique code for payment method. PK.", "type": "nVarChar", "length": 15, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "Descript",   "business_name": "Payment Method Name",     "description": "Full name (e.g. NEFT, RTGS, Bank Transfer, UPI, Cash, Cheque, DD).", "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "Type",        "business_name": "Payment Direction",      "description": "Whether this method is for outgoing or incoming payments.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"O":"Outgoing (Vendor)","I":"Incoming (Customer)","B":"Both"} },
+      { "column_number": 4, "field": "BankAcct",   "business_name": "Default Bank Account",    "description": "Default bank account to use with this payment method.", "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "DefBankCode", "business_name": "Default Bank Code",      "description": "Default bank for this payment method.", "type": "nVarChar", "length": 30, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OCRY",
+    "business_name": "Country Master Data",
+    "module": "Administration",
+    "module_id": 9,
+    "description": "Lookup table for all countries. Referenced in business partner addresses (CRD1), company details, and documents with country fields. Required for geographic reporting and import/export document generation.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 8,
+    "primary_key": { "columns": ["Code"], "confidence": 0.99, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OCRD", "to_business_name": "Business Partner", "from_column": "Code", "to_column": "Country", "on_clause": "OCRY.Code = OCRD.Country", "join_type": "LEFT", "purpose": "Get all BPs in this country",                    "confidence": 0.88 },
+      { "to_table": "CRD1", "to_business_name": "BP Addresses",    "from_column": "Code", "to_column": "Country", "on_clause": "OCRY.Code = CRD1.Country", "join_type": "LEFT", "purpose": "Get country name for BP ship-to/bill-to addresses","confidence": 0.88 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "Code",      "business_name": "Country Code (ISO)",   "description": "ISO 2-letter country code (e.g. IN, US, AE, GB). PK.", "type": "nVarChar", "length": 3,  "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "Name",      "business_name": "Country Name",         "description": "Full country name (e.g. India, United States, UAE).", "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "Code2",     "business_name": "Country Code (ISO 3)", "description": "ISO 3-letter country code (e.g. IND, USA, ARE).", "type": "nVarChar", "length": 3,  "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OSHP",
+    "business_name": "Shipping Type / Carrier Master Data",
+    "module": "Sales",
+    "module_id": 1,
+    "description": "Defines shipping methods and carriers (Road, Rail, Air, Sea, Courier). Referenced on delivery notes and sales orders via ShipType. Used for logistics and freight cost analysis.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 6,
+    "primary_key": { "columns": ["TrnspCode"], "confidence": 0.99, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "ODLN", "to_business_name": "Delivery Note",  "from_column": "TrnspCode", "to_column": "TrnspCode", "on_clause": "OSHP.TrnspCode = ODLN.TrnspCode", "join_type": "LEFT", "purpose": "Get all deliveries shipped via this carrier/method", "confidence": 0.88 },
+      { "to_table": "OINV", "to_business_name": "A/R Invoice",    "from_column": "TrnspCode", "to_column": "TrnspCode", "on_clause": "OSHP.TrnspCode = OINV.TrnspCode", "join_type": "LEFT", "purpose": "Get all invoices dispatched via this method",       "confidence": 0.85 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "TrnspCode", "business_name": "Shipping Type Code", "description": "Unique code for the shipping method. PK. FK in ODLN, OINV.", "type": "Int",      "length": 6,  "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "TrnspName", "business_name": "Shipping Type Name", "description": "Name of the shipping method (e.g. FedEx, DHL, Road Transport, Indian Post).", "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "Website",   "business_name": "Carrier Website",   "description": "Website URL for the carrier (for tracking links).", "type": "nVarChar", "length": 100, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OWTQ",
+    "business_name": "Approval Request (Pending Approval Queue)",
+    "module": "Administration",
+    "module_id": 9,
+    "description": "Stores documents that are awaiting approval by a manager or approver. Each row is one pending approval request. Used for workflow monitoring — 'show all purchase orders waiting for approval', SLA on approval turnaround.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 18,
+    "primary_key": { "columns": ["AbsEntry"], "confidence": 0.95, "rule": "document_header" },
+    "joins": [
+      { "to_table": "OUSR", "to_business_name": "User (Requester)",   "from_column": "UserSign",  "to_column": "USERID",  "on_clause": "OWTQ.UserSign = OUSR.USERID",   "join_type": "LEFT", "purpose": "Get the user who submitted the document for approval", "confidence": 0.88 },
+      { "to_table": "OUSR", "to_business_name": "User (Approver)",    "from_column": "ApprUser",  "to_column": "USERID",  "on_clause": "OWTQ.ApprUser = OUSR.USERID",   "join_type": "LEFT", "purpose": "Get the approver assigned to review this request",   "confidence": 0.85 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "AbsEntry",   "business_name": "Approval Request ID",        "description": "Unique ID for this approval request. PK.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "ObjType",    "business_name": "Document Object Type",        "description": "Type of document awaiting approval (e.g. 22=PO, 18=AP Invoice).", "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "DocEntry",   "business_name": "Source Document ID",          "description": "DocEntry of the document awaiting approval.", "type": "Int",      "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4,  "field": "UserSign",   "business_name": "Requester (User ID)",         "description": "User who created the document and submitted for approval. FK to OUSR.", "type": "Int", "length": 6, "is_pk": false, "is_fk": true, "references": {"table":"OUSR","business_name":"User Master","column":"USERID","confidence":0.88} },
+      { "column_number": 5,  "field": "ApprUser",   "business_name": "Assigned Approver (User ID)", "description": "User assigned to approve this request. FK to OUSR.", "type": "Int", "length": 6, "is_pk": false, "is_fk": true, "references": {"table":"OUSR","business_name":"User Master","column":"USERID","confidence":0.85} },
+      { "column_number": 6,  "field": "Status",     "business_name": "Approval Status",             "description": "Current status of the approval request.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"P":"Pending","A":"Approved","R":"Rejected","C":"Cancelled"} },
+      { "column_number": 7,  "field": "CreateDate", "business_name": "Submitted Date",              "description": "Date the approval request was created.", "type": "Date", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "ApprDate",   "business_name": "Approved / Rejected Date",    "description": "Date the approver took action.", "type": "Date", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "DocTotal",   "business_name": "Document Total Value",        "description": "Total value of the document awaiting approval.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "Remarks",    "business_name": "Approver Remarks",            "description": "Notes or reason from the approver (especially on rejection).", "type": "nVarChar", "length": 254, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "ODPI",
+    "business_name": "Down Payment Invoice — AR (Advance Receipt from Customer)",
+    "module": "Sales",
+    "module_id": 1,
+    "description": "Records advance payments / down payment requests raised on customers before goods are delivered. Linked to a final A/R invoice when the deal closes. Common in project-based and high-value sales.",
+    "is_master": true, "is_header": true, "is_line": false,
+    "total_columns": 30,
+    "primary_key": { "columns": ["DocEntry"], "confidence": 0.90, "rule": "document_header" },
+    "joins": [
+      { "to_table": "DPI1", "to_business_name": "Down Payment Invoice Lines",   "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "ODPI.DocEntry = DPI1.DocEntry", "join_type": "LEFT", "purpose": "Get line details of the advance payment invoice",       "confidence": 0.99 },
+      { "to_table": "OCRD", "to_business_name": "Business Partner (Customer)", "from_column": "CardCode", "to_column": "CardCode", "on_clause": "ODPI.CardCode = OCRD.CardCode",  "join_type": "LEFT", "purpose": "Get customer who paid the advance",                    "confidence": 0.95 },
+      { "to_table": "OINV", "to_business_name": "Final A/R Invoice",           "from_column": "DocEntry", "to_column": "BaseEntry","on_clause": "ODPI.DocEntry = OINV.BaseEntry", "join_type": "LEFT", "purpose": "Get the final invoice this advance was applied against", "confidence": 0.80 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "DocEntry",   "business_name": "Down Payment Invoice Internal ID","description": "Unique system key. FK target in DPI1.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2,  "field": "DocNum",     "business_name": "Down Payment Invoice Number",    "description": "User-facing sequential DP invoice number.", "type": "Int",      "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "CardCode",   "business_name": "Customer Code",                  "description": "Customer from whom advance is received. FK to OCRD.", "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": true, "references": {"table":"OCRD","business_name":"Business Partner","column":"CardCode","confidence":0.95} },
+      { "column_number": 4,  "field": "CardName",   "business_name": "Customer Name",                  "description": "Customer name at time of advance.", "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "DocDate",    "business_name": "Down Payment Date",              "description": "Date of the advance payment invoice.", "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "DocTotal",   "business_name": "Advance Amount",                 "description": "Total advance received from customer.", "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "DocStatus",  "business_name": "Status",                         "description": "Status of this down payment.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"O":"Open","C":"Closed (Applied to Invoice)"} },
+      { "column_number": 8,  "field": "TransId",    "business_name": "Journal Entry ID",               "description": "GL posting for this advance. FK to OJDT.", "type": "Int",      "length": 11, "is_pk": false, "is_fk": true,  "references": {"table":"OJDT","business_name":"Journal Entry","column":"TransId","confidence":0.88} }
+    ]
+  },
+  {
+    "table_name": "DPI1",
+    "business_name": "Down Payment Invoice Lines — AR",
+    "module": "Sales",
+    "module_id": 1,
+    "description": "Line items on an AR down payment invoice — items or services for which advance has been received.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 12,
+    "primary_key": { "columns": ["DocEntry","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "ODPI", "to_business_name": "Down Payment Invoice AR", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "DPI1.DocEntry = ODPI.DocEntry", "join_type": "LEFT", "purpose": "Get advance invoice header", "confidence": 0.99 },
+      { "to_table": "OITM", "to_business_name": "Item Master Data",        "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "DPI1.ItemCode = OITM.ItemCode", "join_type": "LEFT", "purpose": "Get item details",           "confidence": 0.90 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",   "business_name": "Down Payment Invoice ID", "description": "FK to ODPI.DocEntry.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true, "references": {"table":"ODPI","business_name":"Down Payment Invoice AR","column":"DocEntry","confidence":0.99} },
+      { "column_number": 2, "field": "LineNum",    "business_name": "Line Number",             "description": "Sequential line number.", "type": "Int", "length": 6, "is_pk": true, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "ItemCode",   "business_name": "Item Code",               "description": "FK to OITM.", "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": true, "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.90} },
+      { "column_number": 4, "field": "Quantity",   "business_name": "Quantity",                "description": "Quantity on this advance line.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "Price",      "business_name": "Unit Price",              "description": "Price per unit.", "type": "Price", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "LineTotal",  "business_name": "Line Total",              "description": "Total advance amount on this line.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "ODPO",
+    "business_name": "Down Payment Request — AP (Advance to Vendor)",
+    "module": "Purchasing",
+    "module_id": 4,
+    "description": "Records advance payments made to vendors before goods or services are received. Applied against the final AP invoice when the vendor delivers. Common for imports, project procurement, and capital goods purchases.",
+    "is_master": true, "is_header": true, "is_line": false,
+    "total_columns": 28,
+    "primary_key": { "columns": ["DocEntry"], "confidence": 0.90, "rule": "document_header" },
+    "joins": [
+      { "to_table": "DPO1", "to_business_name": "AP Down Payment Lines",  "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "ODPO.DocEntry = DPO1.DocEntry", "join_type": "LEFT", "purpose": "Get lines of the vendor advance payment request",  "confidence": 0.99 },
+      { "to_table": "OCRD", "to_business_name": "Business Partner (Vendor)","from_column": "CardCode","to_column": "CardCode", "on_clause": "ODPO.CardCode = OCRD.CardCode",  "join_type": "LEFT", "purpose": "Get vendor receiving the advance",               "confidence": 0.95 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",  "business_name": "AP Down Payment Internal ID", "description": "Unique system key. FK target in DPO1.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "DocNum",    "business_name": "AP Down Payment Number",      "description": "User-facing sequential number.", "type": "Int",      "length": 11, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "CardCode",  "business_name": "Vendor Code",                 "description": "Vendor receiving advance payment. FK to OCRD.", "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": true, "references": {"table":"OCRD","business_name":"Business Partner (Vendor)","column":"CardCode","confidence":0.95} },
+      { "column_number": 4, "field": "CardName",  "business_name": "Vendor Name",                 "description": "Vendor name at time of advance.", "type": "nVarChar", "length": 100,"is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "DocDate",   "business_name": "Advance Payment Date",        "description": "Date of this vendor advance payment.", "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "DocTotal",  "business_name": "Advance Amount to Vendor",    "description": "Total advance paid to vendor.", "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7, "field": "DocStatus", "business_name": "Status",                      "description": "Status of this advance.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"O":"Open","C":"Closed (Applied to AP Invoice)"} }
+    ]
+  },
+  {
+    "table_name": "DPO1",
+    "business_name": "AP Down Payment Lines",
+    "module": "Purchasing",
+    "module_id": 4,
+    "description": "Line items on an AP down payment — items or services for which advance has been paid to the vendor.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 10,
+    "primary_key": { "columns": ["DocEntry","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "ODPO", "to_business_name": "AP Down Payment", "from_column": "DocEntry", "to_column": "DocEntry", "on_clause": "DPO1.DocEntry = ODPO.DocEntry", "join_type": "LEFT", "purpose": "Get AP advance header details", "confidence": 0.99 },
+      { "to_table": "OITM", "to_business_name": "Item Master Data","from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "DPO1.ItemCode = OITM.ItemCode", "join_type": "LEFT", "purpose": "Get item details",             "confidence": 0.90 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "DocEntry",  "business_name": "AP Down Payment ID", "description": "FK to ODPO.DocEntry.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true, "references": {"table":"ODPO","business_name":"AP Down Payment","column":"DocEntry","confidence":0.99} },
+      { "column_number": 2, "field": "LineNum",   "business_name": "Line Number",        "description": "Sequential line number.", "type": "Int", "length": 6, "is_pk": true, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "ItemCode",  "business_name": "Item Code",          "description": "FK to OITM.", "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": true, "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.90} },
+      { "column_number": 4, "field": "Quantity",  "business_name": "Quantity",           "description": "Quantity on this advance line.", "type": "Quantity", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "Price",     "business_name": "Unit Price",         "description": "Price per unit.", "type": "Price", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "LineTotal", "business_name": "Line Total",         "description": "Total advance on this line.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OAST",
+    "business_name": "Fixed Asset Master Data",
+    "module": "Fixed Assets",
+    "module_id": 12,
+    "description": "Master record for all company fixed assets — machinery, vehicles, computers, furniture. Tracks acquisition cost, depreciation method, accumulated depreciation, and net book value. Required for asset register and depreciation reports.",
+    "is_master": true, "is_header": false, "is_line": false,
+    "total_columns": 30,
+    "primary_key": { "columns": ["ItemCode"], "confidence": 0.97, "rule": "known_master_pk" },
+    "joins": [
+      { "to_table": "OITM", "to_business_name": "Item Master Data", "from_column": "ItemCode", "to_column": "ItemCode", "on_clause": "OAST.ItemCode = OITM.ItemCode", "join_type": "LEFT", "purpose": "Get item description for this fixed asset",    "confidence": 0.92 },
+      { "to_table": "OWHS", "to_business_name": "Warehouse / Location", "from_column": "Location","to_column": "WhsCode",  "on_clause": "OAST.Location = OWHS.WhsCode",   "join_type": "LEFT", "purpose": "Get location/branch where asset is situated", "confidence": 0.82 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "ItemCode",    "business_name": "Asset Item Code",                "description": "Unique asset code. PK. Links to OITM for the asset item.", "type": "nVarChar", "length": 20, "is_pk": true,  "is_fk": true,  "references": {"table":"OITM","business_name":"Item Master","column":"ItemCode","confidence":0.92} },
+      { "column_number": 2,  "field": "AssetClass",  "business_name": "Asset Class / Category",        "description": "Classification of the asset (e.g. Plant, Vehicle, Furniture, IT).", "type": "nVarChar", "length": 20, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "CapDate",     "business_name": "Capitalisation Date",            "description": "Date the asset was capitalised / put into service.", "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4,  "field": "AcqDate",     "business_name": "Acquisition Date",              "description": "Date the asset was purchased.", "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "AcqVal",      "business_name": "Acquisition / Purchase Cost",   "description": "Original cost of the asset when acquired.", "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "NetValue",    "business_name": "Net Book Value (WDV)",           "description": "Current written-down value after accumulated depreciation.", "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "AccumDepr",   "business_name": "Accumulated Depreciation",      "description": "Total depreciation charged to date on this asset.", "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "SalvageVal",  "business_name": "Salvage / Residual Value",      "description": "Expected scrap value at end of useful life.", "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "LifeTime",    "business_name": "Useful Life (Months)",           "description": "Expected useful life in months for depreciation calculation.", "type": "Int",      "length": 6,  "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 10, "field": "DeprcMethod", "business_name": "Depreciation Method",           "description": "Method used to depreciate this asset.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"S":"Straight Line","D":"Declining Balance","U":"Units of Production"} },
+      { "column_number": 11, "field": "Status",      "business_name": "Asset Status",                  "description": "Current status of the asset.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"A":"Active","R":"Retired","S":"Sold","D":"Disposed"} },
+      { "column_number": 12, "field": "Location",    "business_name": "Asset Location (Warehouse/Branch)","description": "Where this asset is physically located. FK to OWHS.", "type": "nVarChar", "length": 8, "is_pk": false, "is_fk": true, "references": {"table":"OWHS","business_name":"Warehouse","column":"WhsCode","confidence":0.82} },
+      { "column_number": 13, "field": "SerialNo",    "business_name": "Asset Serial Number",           "description": "Manufacturer or company serial number of this asset.", "type": "nVarChar", "length": 32, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "OBNK",
+    "business_name": "Bank Statement Header",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Records imported bank statements for bank reconciliation. Each row is one bank statement for one period. Lines stored in BNK1. Used to reconcile book balance against bank balance and identify uncleared transactions.",
+    "is_master": true, "is_header": true, "is_line": false,
+    "total_columns": 15,
+    "primary_key": { "columns": ["AbsEntry"], "confidence": 0.90, "rule": "document_header" },
+    "joins": [
+      { "to_table": "BNK1", "to_business_name": "Bank Statement Lines", "from_column": "AbsEntry", "to_column": "Abs",     "on_clause": "OBNK.AbsEntry = BNK1.Abs",      "join_type": "LEFT", "purpose": "Get individual bank transactions in this statement", "confidence": 0.99 }
+    ],
+    "columns": [
+      { "column_number": 1, "field": "AbsEntry",   "business_name": "Bank Statement Internal ID",  "description": "Unique system key. PK. FK target in BNK1.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": false, "references": null },
+      { "column_number": 2, "field": "BankCode",   "business_name": "Bank Code",                   "description": "Bank for this statement.", "type": "nVarChar", "length": 30, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 3, "field": "AcctCode",   "business_name": "Bank GL Account",             "description": "GL account for this bank. FK to OACT.", "type": "nVarChar", "length": 15, "is_pk": false, "is_fk": true, "references": {"table":"OACT","business_name":"Chart of Accounts","column":"AcctCode","confidence":0.90} },
+      { "column_number": 4, "field": "StartBal",   "business_name": "Opening Balance",             "description": "Bank account opening balance for this statement period.", "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5, "field": "EndBal",     "business_name": "Closing Balance",             "description": "Bank account closing balance per statement.", "type": "Sum",      "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6, "field": "StatDate",   "business_name": "Statement Date",              "description": "Date this bank statement was generated.", "type": "Date",     "length": 0,  "is_pk": false, "is_fk": false, "references": null }
+    ]
+  },
+  {
+    "table_name": "BNK1",
+    "business_name": "Bank Statement Lines (Individual Bank Transactions)",
+    "module": "Finance",
+    "module_id": 5,
+    "description": "Individual transaction lines from an imported bank statement. Each row is one credit or debit on the bank account. Matched against SAP payment/receipt records during bank reconciliation.",
+    "is_master": false, "is_header": false, "is_line": true,
+    "total_columns": 15,
+    "primary_key": { "columns": ["Abs","LineNum"], "confidence": 0.95, "rule": "line_table_composite" },
+    "joins": [
+      { "to_table": "OBNK", "to_business_name": "Bank Statement Header", "from_column": "Abs", "to_column": "AbsEntry", "on_clause": "BNK1.Abs = OBNK.AbsEntry", "join_type": "LEFT", "purpose": "Get the bank statement this transaction belongs to", "confidence": 0.99 }
+    ],
+    "columns": [
+      { "column_number": 1,  "field": "Abs",         "business_name": "Bank Statement Internal ID","description": "FK to OBNK.AbsEntry. Composite PK with LineNum.", "type": "Int",      "length": 11, "is_pk": true,  "is_fk": true,  "references": {"table":"OBNK","business_name":"Bank Statement","column":"AbsEntry","confidence":0.99} },
+      { "column_number": 2,  "field": "LineNum",     "business_name": "Transaction Line Number",   "description": "Sequential line number.", "type": "Int", "length": 6, "is_pk": true, "is_fk": false, "references": null },
+      { "column_number": 3,  "field": "Date",        "business_name": "Transaction Date",          "description": "Date of the bank transaction.", "type": "Date", "length": 0, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 4,  "field": "Ref",         "business_name": "Transaction Reference",     "description": "Bank reference / UTR number / cheque number.", "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 5,  "field": "Credit",      "business_name": "Credit (Money In)",         "description": "Amount credited to the bank account (receipt).", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 6,  "field": "Debit",       "business_name": "Debit (Money Out)",         "description": "Amount debited from the bank account (payment).", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 7,  "field": "Balance",     "business_name": "Running Bank Balance",      "description": "Running balance after this transaction.", "type": "Sum", "length": 19, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 8,  "field": "Details",     "business_name": "Bank Narration",            "description": "Description from the bank statement (e.g. NEFT from XYZ Ltd).", "type": "nVarChar", "length": 100, "is_pk": false, "is_fk": false, "references": null },
+      { "column_number": 9,  "field": "Reconciled",  "business_name": "Is Reconciled",            "description": "Y if this line has been matched to a SAP payment/receipt record.", "type": "Char", "length": 1, "is_pk": false, "is_fk": false, "references": null, "enum_values": {"Y":"Reconciled","N":"Unreconciled"} },
+      { "column_number": 10, "field": "ExtRef",      "business_name": "External Reference",        "description": "External reference (UTR, IMPS ref, RTGS ref) for matching.", "type": "nVarChar", "length": 50, "is_pk": false, "is_fk": false, "references": null }
+    ]
+  }
+]
